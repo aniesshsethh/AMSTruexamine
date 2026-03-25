@@ -34,7 +34,14 @@ function sampleStructuredTruexamineReport(): array
         'research_contact_method' => 'Research',
         'research_verification_result' => 'Major Discrepancy',
         'research_remarks' => 'Test remarks for automated check.',
-        'key_findings' => ['Synthetic finding for tests.'],
+        'key_findings' => [
+            '1. Synthetic undeclared-employment finding for tests.',
+            '2. Synthetic date-alignment finding for tests.',
+        ],
+        'verifier_name' => 'Research',
+        'verifier_designation' => 'Research',
+        'verifier_email' => 'Not Available',
+        'verifier_phone' => 'Not Available',
     ];
 }
 
@@ -98,4 +105,47 @@ test('store generates a structured report using the ai agent', function () {
             ->where('report.vendor_name', 'A.M.S. INFORM PRIVATE LIMITED')
             ->where('report.applicant_name', 'Jane Doe'),
         );
+});
+
+test('store returns the real error message when the ai agent fails', function () {
+    TruexamineReportGenerator::fake(function (): void {
+        throw new RuntimeException('OpenAI Error [400]: invalid_request_error');
+    });
+
+    $user = User::factory()->create();
+
+    $pdf = UploadedFile::fake()->create('document.pdf', 200, 'application/pdf');
+
+    $this->actingAs($user)
+        ->post(route('truexamine-report.store'), [
+            'uan_pf_download' => $pdf,
+            'cv' => $pdf,
+            'bgv_profile' => $pdf,
+            'client_name' => 'DXC TECHNOLOGY INDIA PRIVATE LIMITED',
+            'client_ref' => 'DXC-4001878-Truexamine',
+            'ams_ref' => '4001884',
+        ])
+        ->assertSessionHasErrors([
+            'report' => 'OpenAI Error [400]: invalid_request_error',
+        ]);
+});
+
+test('download returns 404 when no report is in session', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('truexamine-report.download'))
+        ->assertNotFound();
+});
+
+test('download returns a pdf when report is in session', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->withSession(['truexamine_report' => sampleStructuredTruexamineReport()])
+        ->get(route('truexamine-report.download'));
+
+    $response->assertOk();
+    expect($response->headers->get('content-type'))->toContain('application/pdf');
+    expect(strtolower((string) $response->headers->get('content-disposition')))->toContain('attachment');
 });

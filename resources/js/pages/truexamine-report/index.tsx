@@ -10,6 +10,7 @@ import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 
 const formAction = '/truexamine-report';
+const pdfDownloadUrl = '/truexamine-report/download';
 
 export type TruexamineReport = {
     vendor_name: string;
@@ -34,6 +35,10 @@ export type TruexamineReport = {
     research_verification_result: string;
     research_remarks: string;
     key_findings: string[];
+    verifier_name: string;
+    verifier_designation: string;
+    verifier_email: string;
+    verifier_phone: string;
 };
 
 type PageProps = {
@@ -84,7 +89,8 @@ export default function TruexamineReportPage() {
                         <p className="mt-1 text-muted-foreground text-sm">
                             Upload the UAN/PF PDF, CV PDF, and BGV profile PDF.
                             OpenAI generates a structured AMS-style TRUEXAMINE
-                            report.
+                            report. Download the same content as a PDF after
+                            generation.
                         </p>
                     </div>
                 </div>
@@ -225,11 +231,18 @@ export default function TruexamineReportPage() {
                             <h2 className="text-lg font-semibold">
                                 Generated report
                             </h2>
-                            <span
-                                className={`rounded-md px-3 py-1 font-medium text-sm ${colorBadgeClass(report.report_color)}`}
-                            >
-                                {report.report_color}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button variant="default" size="sm" asChild>
+                                    <a href={pdfDownloadUrl}>
+                                        Download PDF
+                                    </a>
+                                </Button>
+                                <span
+                                    className={`rounded-md px-3 py-1 font-medium text-sm ${colorBadgeClass(report.report_color)}`}
+                                >
+                                    {report.report_color}
+                                </span>
+                            </div>
                         </div>
 
                         <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -387,6 +400,36 @@ export default function TruexamineReportPage() {
                                     <li key={finding}>{finding}</li>
                                 ))}
                             </ul>
+                        </div>
+
+                        <div className="border-t border-border pt-4">
+                            <h3 className="mb-2 font-medium">Verifier</h3>
+                            <dl className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        Verifier name
+                                    </dt>
+                                    <dd>{report.verifier_name}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        Designation
+                                    </dt>
+                                    <dd>{report.verifier_designation}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        E-mail
+                                    </dt>
+                                    <dd>{report.verifier_email}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        Phone
+                                    </dt>
+                                    <dd>{report.verifier_phone}</dd>
+                                </div>
+                            </dl>
                         </div>
                     </div>
                 )}

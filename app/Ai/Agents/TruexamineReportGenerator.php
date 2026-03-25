@@ -32,19 +32,42 @@ You will receive exactly three PDF attachments in this order:
 
 Your job:
 - Extract employer names, designations, and employment date ranges from each source.
-- Cross-check CV and BGV against UAN records. Flag undeclared employments, date mismatches (even by one day), gaps, and transitions (e.g. IBM to Kyndryl).
+- Cross-check CV and BGV against UAN records. Flag undeclared employments, genuine gaps, and transitions (e.g. IBM to Kyndryl).
+
+Date comparison rules (critical — follow exactly):
+- Before claiming any "date mismatch" or "one-day difference", mentally normalize each date to a calendar day (ignore formatting: "10-Oct-2016", "10 Oct 2016", "10-OCT-2016", ISO dates, etc. are the same day if they denote the same day, month, and year).
+- If UAN, CV, and BGV all show the same end date for an employer (e.g. HCL end date 10-Oct-2016 in all three), you MUST NOT report a day mismatch, minor date discrepancy, or off-by-one error for that field. Identical dates across sources are a match.
+- UAN PDFs may list multiple rows for one employer (overlapping spells, establishment IDs, or member IDs). Compare the row that matches the employer in question; do not infer a conflict from duplicate or adjacent lines if the stated exit/join dates for that employment spell agree with CV/BGV.
+- Only flag a date mismatch when, after normalization, the calendar dates still differ (e.g. CV end 09-Oct-2016 vs UAN end 11-Oct-2016). If PDF text is ambiguous or OCR-noisy, say verification is unclear in remarks instead of asserting a one-day gap.
+- Do not invent discrepancies to mirror example reports; every finding must be grounded in the three documents.
+
 - Note when historical employment predates UAN (launched ~October 2014 in India) and therefore may not appear in UAN.
 - For "Form 26AS" style rows, use "Not Available" if tax data is not in the PDFs.
 - Assign report_color: GREEN (clear), YELLOW (minor issues only), or RED (major discrepancy such as undeclared employment or material fraud risk).
-- Write key_findings as concise, numbered-style bullet strings (plain text, no markdown).
 - Use the client_ref and ams_ref values supplied in the user message when populating those fields.
 - Use today's date for order_date and verified_date in ISO format (YYYY-MM-DD) unless the user message specifies different dates.
 - Be factual; if something cannot be verified from the documents, say so in remarks rather than inventing data.
+
+Key findings (must mirror standard TRUEXAMINE research output):
+- Populate key_findings as an ordered list of plain-text strings. Each string MUST start with its index and a period and space, e.g. "1. ...", "2. ...", "3. ...".
+- Cover the following themes when they apply to THIS candidate's documents (omit a numbered item only if genuinely not applicable; do not pad with generic filler):
+  1) Undeclared or missing employment: employers or date ranges that appear in UAN but are not declared (or are materially inconsistent) in CV and/or BGV.
+  2) Date alignment: after normalization, call out any remaining real calendar mismatches between CV vs BGV vs UAN (e.g. join/end dates off by a real day). If none, state clearly that dates align (or that no material mismatch was found).
+  3) Employer / legal transitions visible in UAN (e.g. IBM India Pvt Ltd to Kyndryl Solutions Pvt Ltd) and whether records support the transition.
+  4) Employment not shown in UAN: explain using factual reasons from records (e.g. spell entirely before UAN go-live ~October 2014 in India, such as older HCL tenure), without claiming a mismatch when UAN simply did not yet exist for that period.
+- research_remarks may summarize context, but the numbered key_findings must carry the main narrative like a client-facing AMS report.
+
+Verifier block (footer of research section):
+- Set verifier_name and verifier_designation to "Research" when verification is document/desk-based (typical for this check type).
+- Set verifier_email and verifier_phone to "Not Available" unless a real verifier identity appears in the PDFs.
 INSTRUCTIONS;
     }
 
     /**
      * Get the agent's structured output schema definition.
+     *
+     * Verification check rows use withoutAdditionalProperties() because OpenAI requires
+     * additionalProperties: false on object types used as array items.
      */
     public function schema(JsonSchema $schema): array
     {
@@ -54,7 +77,7 @@ INSTRUCTIONS;
             'given' => $schema->string()->required(),
             'verified' => $schema->string()->required(),
             'check_result' => $schema->string()->required(),
-        ]);
+        ])->withoutAdditionalProperties();
 
         return [
             'vendor_name' => $schema->string()->required(),
@@ -73,6 +96,10 @@ INSTRUCTIONS;
             'research_verification_result' => $schema->string()->required(),
             'research_remarks' => $schema->string()->required(),
             'key_findings' => $schema->array()->items($schema->string())->required(),
+            'verifier_name' => $schema->string()->required(),
+            'verifier_designation' => $schema->string()->required(),
+            'verifier_email' => $schema->string()->required(),
+            'verifier_phone' => $schema->string()->required(),
         ];
     }
 }

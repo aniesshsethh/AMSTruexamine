@@ -16,6 +16,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('truexamine-report', [TruexamineReportController::class, 'store'])
         ->middleware('throttle:8,1')
         ->name('truexamine-report.store');
+    Route::get('truexamine-report/download', [TruexamineReportController::class, 'download'])
+        ->middleware('throttle:30,1')
+        ->name('truexamine-report.download');
 });
 
 require __DIR__.'/settings.php';
