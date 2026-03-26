@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 /*
@@ -14,8 +15,11 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature');
+
+beforeAll(function (): void {
+    Artisan::call('migrate', ['--force' => true]);
+});
 
 /*
 |--------------------------------------------------------------------------

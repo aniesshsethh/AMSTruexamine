@@ -32,7 +32,12 @@ You will receive exactly three PDF attachments in this order:
 
 Your job:
 - Extract employer names, designations, and employment date ranges from each source.
-- Cross-check CV and BGV against UAN records. Flag undeclared employments, genuine gaps, and transitions (e.g. IBM to Kyndryl).
+- Perform three-way reconciliation across UAN, CV, and BGV. Every employer spell should be compared bidirectionally across all three sources.
+- Flag any missing record in any direction:
+  - present in UAN but missing in CV/BGV,
+  - present in CV but missing in UAN/BGV,
+  - present in BGV but missing in UAN/CV.
+- Treat these as discrepancies and report them clearly in verification_checks, research_remarks, and key_findings (unless a factual exception applies, such as pre-UAN-go-live historical tenure).
 
 Date comparison rules (critical — follow exactly):
 - Before claiming any "date mismatch" or "one-day difference", mentally normalize each date to a calendar day (ignore formatting: "10-Oct-2016", "10 Oct 2016", "10-OCT-2016", ISO dates, etc. are the same day if they denote the same day, month, and year).
@@ -47,11 +52,12 @@ Date comparison rules (critical — follow exactly):
 - Use the client_ref and ams_ref values supplied in the user message when populating those fields.
 - Use today's date for order_date and verified_date in ISO format (YYYY-MM-DD) unless the user message specifies different dates.
 - Be factual; if something cannot be verified from the documents, say so in remarks rather than inventing data.
+- For every row in verification_checks, check_result MUST be exactly "Pass" or "Fail" (never "Match Found", "No Match Found", "Not Available", or any other wording).
 
 Key findings (must mirror standard TRUEXAMINE research output):
 - Populate key_findings as an ordered list of plain-text strings. Each string MUST start with its index and a period and space, e.g. "1. ...", "2. ...", "3. ...".
 - Cover the following themes when they apply to THIS candidate's documents (omit a numbered item only if genuinely not applicable; do not pad with generic filler):
-  1) Undeclared or missing employment: employers or date ranges that appear in UAN but are not declared (or are materially inconsistent) in CV and/or BGV.
+  1) Missing employment in any source: employers or date ranges that appear in one source (UAN/CV/BGV) but are missing or materially inconsistent in one or both of the other sources.
   2) Date alignment: after normalization, call out any remaining real calendar mismatches between CV vs BGV vs UAN (e.g. join/end dates off by a real day). If none, state clearly that dates align (or that no material mismatch was found).
   3) Employer / legal transitions visible in UAN (e.g. IBM India Pvt Ltd to Kyndryl Solutions Pvt Ltd) and whether records support the transition.
   4) Employment not shown in UAN: explain using factual reasons from records (e.g. spell entirely before UAN go-live ~October 2014 in India, such as older HCL tenure), without claiming a mismatch when UAN simply did not yet exist for that period.
@@ -76,7 +82,7 @@ INSTRUCTIONS;
             'type_of_search' => $schema->string()->required(),
             'given' => $schema->string()->required(),
             'verified' => $schema->string()->required(),
-            'check_result' => $schema->string()->required(),
+            'check_result' => $schema->string()->enum(['Pass', 'Fail'])->required(),
         ])->withoutAdditionalProperties();
 
         return [
