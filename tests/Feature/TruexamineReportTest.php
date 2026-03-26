@@ -46,6 +46,28 @@ function sampleStructuredTruexamineReport(): array
             '1. Synthetic undeclared-employment finding for tests.',
             '2. Synthetic date-alignment finding for tests.',
         ],
+        'annexure_rows' => [
+            [
+                'employer_name' => 'Example Employer Pvt Ltd',
+                'employment_start_date' => '2020-01-01',
+                'employment_end_date' => '2022-01-31',
+                'pf_match' => 'Yes',
+                'bgv_match' => 'Yes',
+                'cv_match' => 'Yes',
+                'match_status' => 'Match',
+                'remarks' => 'Synthetic row for tests.',
+            ],
+        ],
+        'education_qualifications' => [
+            [
+                'qualification' => 'B.Tech',
+                'institution' => 'Example University',
+                'year' => '2012',
+                'cv_match' => 'Yes',
+                'bgv_match' => 'Yes',
+                'remarks' => 'Synthetic education row for tests.',
+            ],
+        ],
         'verifier_name' => 'Research',
         'verifier_designation' => 'Research',
         'verifier_email' => 'Not Available',

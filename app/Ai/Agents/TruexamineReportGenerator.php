@@ -63,6 +63,33 @@ Key findings (must mirror standard TRUEXAMINE research output):
   4) Employment not shown in UAN: explain using factual reasons from records (e.g. spell entirely before UAN go-live ~October 2014 in India, such as older HCL tenure), without claiming a mismatch when UAN simply did not yet exist for that period.
 - research_remarks may summarize context, but the numbered key_findings must carry the main narrative like a client-facing AMS report.
 
+Annexure table data (for the annexure page):
+- Provide annexure_rows as an employment reconciliation table with one row per company / employment spell.
+- Include ALL companies found across UAN (PF), CV, and BGV (not just discrepancies).
+- Each annexure row must include:
+  - employer_name
+  - employment_start_date (YYYY-MM-DD when known, else empty string)
+  - employment_end_date (YYYY-MM-DD when known; use "Present" for ongoing)
+  - pf_match (Yes/No/Partial)
+  - bgv_match (Yes/No/Partial)
+  - cv_match (Yes/No/Partial)
+  - match_status (examples: "Match", "Partial Match", "Mismatch", "Undeclared Employment")
+  - remarks
+- Use factual values from the PDFs only.
+- Keep annexure row remarks short: maximum 12 words, one concise sentence, no filler.
+
+Education table data (for the annexure page):
+- Provide education_qualifications with one row per qualification found in CV / BGV.
+- Each education row must include:
+  - qualification
+  - institution
+  - year
+  - cv_match (Yes/No/Partial)
+  - bgv_match (Yes/No/Partial)
+  - remarks
+- Include ALL identified qualifications (not just mismatches). If a field is unavailable, use "Not Available".
+- Keep education remarks short: maximum 10 words, concise and specific.
+
 Verifier block (footer of research section):
 - Set verifier_name and verifier_designation to "Research" when verification is document/desk-based (typical for this check type).
 - Set verifier_email and verifier_phone to "Not Available" unless a real verifier identity appears in the PDFs.
@@ -85,6 +112,26 @@ INSTRUCTIONS;
             'check_result' => $schema->string()->enum(['Pass', 'Fail'])->required(),
         ])->withoutAdditionalProperties();
 
+        $annexureRow = $schema->object([
+            'employer_name' => $schema->string()->required(),
+            'employment_start_date' => $schema->string()->required(),
+            'employment_end_date' => $schema->string()->required(),
+            'pf_match' => $schema->string()->required(),
+            'bgv_match' => $schema->string()->required(),
+            'cv_match' => $schema->string()->required(),
+            'match_status' => $schema->string()->required(),
+            'remarks' => $schema->string()->required(),
+        ])->withoutAdditionalProperties();
+
+        $educationRow = $schema->object([
+            'qualification' => $schema->string()->required(),
+            'institution' => $schema->string()->required(),
+            'year' => $schema->string()->required(),
+            'cv_match' => $schema->string()->required(),
+            'bgv_match' => $schema->string()->required(),
+            'remarks' => $schema->string()->required(),
+        ])->withoutAdditionalProperties();
+
         return [
             'vendor_name' => $schema->string()->required(),
             'order_date' => $schema->string()->required(),
@@ -102,6 +149,8 @@ INSTRUCTIONS;
             'research_verification_result' => $schema->string()->required(),
             'research_remarks' => $schema->string()->required(),
             'key_findings' => $schema->array()->items($schema->string())->required(),
+            'annexure_rows' => $schema->array()->items($annexureRow)->required(),
+            'education_qualifications' => $schema->array()->items($educationRow)->required(),
             'verifier_name' => $schema->string()->required(),
             'verifier_designation' => $schema->string()->required(),
             'verifier_email' => $schema->string()->required(),

@@ -59,6 +59,12 @@
         .annexure-box { border: 1px solid #222; width: 86%; margin: 120px auto 0 auto; padding: 26px 8px; }
         .annexure { text-align: center; font-size: 16pt; font-weight: 700; line-height: 1.35; }
         .annexure-image { display: block; width: 100%; height: 215mm; margin-top: 6pt; }
+        .annexure-page { width: 98%; margin: 0 auto; font-size: 8.6pt; }
+        .annexure-title { font-weight: 700; margin: 2pt 0 6pt 0; }
+        .annexure-subtitle { margin: 0 0 8pt 0; font-weight: 700; }
+        .annexure-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .annexure-table th, .annexure-table td { border: 1px solid #555; padding: 5px 4px; vertical-align: top; }
+        .annexure-table th { background: #ececec; text-align: left; font-weight: 700; }
     </style>
 </head>
 <body>
@@ -67,6 +73,38 @@
         $verifiedDate = filled($report['verified_date'] ?? null) ? \Carbon\Carbon::parse($report['verified_date'])->format('F j, Y') : '';
         $dob = filled($report['applicant_dob'] ?? null) ? \Carbon\Carbon::parse($report['applicant_dob'])->format('F j, Y') : '';
         $rows = $report['verification_checks'] ?? [];
+        $annexureRows = $report['annexure_rows'] ?? [];
+        $educationRows = $report['education_qualifications'] ?? [];
+        $annexureRows = collect(is_array($annexureRows) ? $annexureRows : [])
+            ->sort(function ($a, $b): int {
+                $normalizeDateToTimestamp = static function (string $value, bool $isEndDate): int {
+                    $normalized = strtolower(trim($value));
+
+                    if ($normalized === '' || $normalized === 'present') {
+                        return $isEndDate ? PHP_INT_MAX : 0;
+                    }
+
+                    try {
+                        return \Carbon\Carbon::parse($value)->timestamp;
+                    } catch (\Throwable) {
+                        return 0;
+                    }
+                };
+
+                $aEnd = $normalizeDateToTimestamp((string) ($a['employment_end_date'] ?? ''), true);
+                $bEnd = $normalizeDateToTimestamp((string) ($b['employment_end_date'] ?? ''), true);
+
+                if ($aEnd !== $bEnd) {
+                    return $bEnd <=> $aEnd;
+                }
+
+                $aStart = $normalizeDateToTimestamp((string) ($a['employment_start_date'] ?? ''), false);
+                $bStart = $normalizeDateToTimestamp((string) ($b['employment_start_date'] ?? ''), false);
+
+                return $bStart <=> $aStart;
+            })
+            ->values()
+            ->all();
         $resolvedReportColor = strtoupper((string) ($report['report_color'] ?? ''));
         $verificationResult = strtolower((string) ($report['research_verification_result'] ?? ''));
 
@@ -173,13 +211,75 @@
             </tr>
         </table>
 
-        <div style="margin-top:4pt;"><span class="label">Remarks:</span> {{ $report['research_remarks'] ?? '' }}</div>
-        <div><span class="label">Key Findings:</span></div>
-        <ul class="findings">
-            @foreach($report['key_findings'] ?? [] as $finding)
-                <li>{{ $finding }}</li>
-            @endforeach
-        </ul>
+        <div class="annexure-page">
+            <div class="annexure-title">Truexamine Check Report</div>
+
+            <table class="annexure-table">
+                <thead>
+                    <tr>
+                        <th style="width:29%;">Employer Name</th>
+                        <th style="width:9%;">PF</th>
+                        <th style="width:9%;">BGV</th>
+                        <th style="width:9%;">CV</th>
+                        <th style="width:24%;">Match Status</th>
+                        <th style="width:20%;">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($annexureRows as $annexureRow)
+                        <tr>
+                            <td>{{ $annexureRow['employer_name'] ?? '' }}</td>
+                            <td>{{ $annexureRow['pf_match'] ?? '' }}</td>
+                            <td>{{ $annexureRow['bgv_match'] ?? '' }}</td>
+                            <td>{{ $annexureRow['cv_match'] ?? '' }}</td>
+                            <td>{{ $annexureRow['match_status'] ?? '' }}</td>
+                        <td>{{ $annexureRow['remarks'] ?? '' }}</td>
+                        </tr>
+                    @empty
+                        @foreach($rows as $row)
+                            <tr>
+                                <td>{{ $row['check_name'] ?? '' }}</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td>{{ ($row['check_result'] ?? '') === 'Pass' ? 'Match' : 'Mismatch' }}</td>
+                                <td>{{ $report['research_remarks'] ?? '-' }}</td>
+                            </tr>
+                        @endforeach
+                    @endforelse
+                </tbody>
+            </table>
+
+            <div class="annexure-title" style="margin-top:10pt;">Educational Qualifications</div>
+            <table class="annexure-table">
+                <thead>
+                    <tr>
+                        <th style="width:28%;">Qualification</th>
+                        <th style="width:25%;">Institution</th>
+                        <th style="width:10%;">Year</th>
+                        <th style="width:9%;">CV</th>
+                        <th style="width:9%;">BGV</th>
+                        <th style="width:19%;">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($educationRows as $educationRow)
+                        <tr>
+                            <td>{{ $educationRow['qualification'] ?? '' }}</td>
+                            <td>{{ $educationRow['institution'] ?? '' }}</td>
+                            <td>{{ $educationRow['year'] ?? '' }}</td>
+                            <td>{{ $educationRow['cv_match'] ?? '' }}</td>
+                            <td>{{ $educationRow['bgv_match'] ?? '' }}</td>
+                        <td>{{ $educationRow['remarks'] ?? '' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6">No education qualifications were extracted from the provided documents.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
 
         <table class="pair-head" style="margin-top:6pt;">
             <tr>
@@ -217,16 +317,5 @@
             Disclaimer: AMS INFORM makes it easy to interpret reports using Final status such as CLEAR / MAJOR DISCREPANCY / MINOR DISCREPANCY / UTV in each completed report. Those reports marked as CLEAR do not contain any potentially adverse information about candidate. Reports are also color coded for easy identification of final status of the report. This is a strictly confidential document and contains privileged information. This report has been generated under contractual agreement between AMS Inform and it's Client . It is intended only for the individual to whom or entity to which it is addressed as shown at the beginning of the report. If the reader of this report is not the intended recipient, you are hereby notified that any review, dissemination, distribution, uses, or copying of this report is strictly prohibited. If you have received this report in error, please notify us immediately at verify@amsinform.com. AMS Inform is not a legal counsel and does not provide any legal advice. It is advised that client/ intended recipient of this report should work with their legal counsel to ensure overall background screening/verification compliance. All the reports and information listed/provided by AMS Inform to it's Client must be used by it's Client in compliance with all applicable legal and regularity requirements.
         </p>
     </div>
-
-    <div class="page-break"></div>
-    <div class="annexure-box">
-        <div class="annexure">ANNEXURE<br>&<br>ADDITIONAL DOCUMENTS</div>
-    </div>
-
-    <div class="page-break"></div>
-    <img class="annexure-image" src="{{ public_path('pdf-assets/annexure-1.jpg') }}" alt="Annexure page one">
-
-    <div class="page-break"></div>
-    <img class="annexure-image" src="{{ public_path('pdf-assets/annexure-2.jpg') }}" alt="Annexure page two">
 </body>
 </html>

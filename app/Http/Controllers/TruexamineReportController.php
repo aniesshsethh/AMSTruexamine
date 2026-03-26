@@ -112,6 +112,10 @@ Bidirectional reconciliation rule (strict):
 - In short: anything present in one source but absent in another source must be detected and explicitly reported.
 
 Include verifier_name, verifier_designation, verifier_email, and verifier_phone (use "Research" / "Not Available" when appropriate per your instructions). Number key_findings as "1. ...", "2. ...", covering undeclared UAN employment vs CV/BGV, real date mismatches, UAN employer transitions, and UAN gaps explained (e.g. pre-Oct 2014 tenure).
+Include annexure_rows with one row per company/employment spell and fields: employer_name, employment_start_date, employment_end_date, pf_match, bgv_match, cv_match, match_status, remarks.
+Include education_qualifications with one row per qualification and fields: qualification, institution, year, cv_match, bgv_match, remarks.
+Keep each annexure_rows.remarks value very short (maximum 12 words).
+Keep each education_qualifications.remarks value very short (maximum 10 words).
 PROMPT;
 
         try {
@@ -265,6 +269,76 @@ PROMPT;
                 'Minor date mismatch: Dell International Services joining date differs by 1 day in CV vs BGV/UAN.',
                 'Employer transition verified: IBM India Pvt Ltd transitioned to Kyndryl Solutions Pvt Ltd in UAN records.',
                 'HCL employment not appearing in UAN: UAN System was launched in October 2014 and employment tenure pertains to before 2014.',
+            ],
+            'annexure_rows' => [
+                [
+                    'employer_name' => 'Kyndryl Solutions Pvt Ltd / IBM India Pvt Ltd',
+                    'employment_start_date' => '2016-12-06',
+                    'employment_end_date' => 'Present',
+                    'pf_match' => 'Yes',
+                    'bgv_match' => 'Yes',
+                    'cv_match' => 'Yes',
+                    'match_status' => 'Match',
+                    'remarks' => 'Employer transitioned from IBM to Kyndryl in 2021 and is consistent across records.',
+                ],
+                [
+                    'employer_name' => 'Tata Consultancy Services Ltd',
+                    'employment_start_date' => '2014-11-05',
+                    'employment_end_date' => '2016-10-10',
+                    'pf_match' => 'Yes',
+                    'bgv_match' => 'Yes',
+                    'cv_match' => 'Yes',
+                    'match_status' => 'Match',
+                    'remarks' => 'Declared employment matches in PF, CV, and BGV.',
+                ],
+                [
+                    'employer_name' => 'Tata Consultancy Services Ltd',
+                    'employment_start_date' => '2009-12-11',
+                    'employment_end_date' => '2014-11-04',
+                    'pf_match' => 'Yes',
+                    'bgv_match' => 'No',
+                    'cv_match' => 'No',
+                    'match_status' => 'Undeclared Employment',
+                    'remarks' => 'Employment spell appears in PF but is missing in CV and BGV.',
+                ],
+                [
+                    'employer_name' => 'Dell International Services India Pvt Ltd',
+                    'employment_start_date' => '2013-02-25',
+                    'employment_end_date' => '2014-10-20',
+                    'pf_match' => 'Yes',
+                    'bgv_match' => 'Yes',
+                    'cv_match' => 'Partial',
+                    'match_status' => 'Partial Match',
+                    'remarks' => 'Company is present in all sources; CV joining date differs by 1 day.',
+                ],
+                [
+                    'employer_name' => 'HCL Comnet Systems & Services Ltd',
+                    'employment_start_date' => '2010-04-26',
+                    'employment_end_date' => '2013-02-25',
+                    'pf_match' => 'No',
+                    'bgv_match' => 'Yes',
+                    'cv_match' => 'Yes',
+                    'match_status' => 'Mismatch',
+                    'remarks' => 'Not available in PF/UAN; likely pre-UAN period or PF transfer/non-linking.',
+                ],
+            ],
+            'education_qualifications' => [
+                [
+                    'qualification' => 'Bachelor of Technology (Computer Science)',
+                    'institution' => 'Example Institute of Technology',
+                    'year' => '2009',
+                    'cv_match' => 'Yes',
+                    'bgv_match' => 'Yes',
+                    'remarks' => 'Qualification details align between CV and BGV.',
+                ],
+                [
+                    'qualification' => 'Higher Secondary (XII)',
+                    'institution' => 'Example Senior Secondary School',
+                    'year' => '2005',
+                    'cv_match' => 'Yes',
+                    'bgv_match' => 'Yes',
+                    'remarks' => 'Reported consistently in available documents.',
+                ],
             ],
             'verifier_name' => 'Research',
             'verifier_designation' => 'Research',
