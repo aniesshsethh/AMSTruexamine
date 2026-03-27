@@ -10,7 +10,7 @@ import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 
 const formAction = '/truexamine-report';
-const pdfDownloadUrl = '/truexamine-report/download';
+const docxDownloadUrl = '/truexamine-report/download';
 
 export type TruexamineReport = {
     vendor_name: string;
@@ -89,8 +89,9 @@ export default function TruexamineReportPage() {
                         <p className="mt-1 text-muted-foreground text-sm">
                             Upload the UAN/PF PDF, CV PDF, and BGV profile PDF.
                             OpenAI generates a structured AMS-style TRUEXAMINE
-                            report. Download the same content as a PDF after
-                            generation.
+                            report. Download the Truexamine Check Report and
+                            Educational Qualifications tables as a Word document
+                            (.docx) after generation.
                         </p>
                     </div>
                 </div>
@@ -233,8 +234,8 @@ export default function TruexamineReportPage() {
                             </h2>
                             <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="default" size="sm" asChild>
-                                    <a href={pdfDownloadUrl}>
-                                        Download PDF
+                                    <a href={docxDownloadUrl}>
+                                        Download Word (.docx)
                                     </a>
                                 </Button>
                                 <span

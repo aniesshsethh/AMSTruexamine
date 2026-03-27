@@ -5,20 +5,24 @@ namespace App\Http\Controllers;
 use App\Ai\Agents\TruexamineReportGenerator;
 use App\Ai\Agents\TruexamineUploadedDocumentClassifier;
 use App\Http\Requests\GenerateTruexamineReportRequest;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\TruexamineReportDocxExporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Responses\StructuredAgentResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 class TruexamineReportController extends Controller
 {
+    public function __construct(
+        private readonly TruexamineReportDocxExporter $truexamineReportDocxExporter,
+    ) {}
+
     /**
      * Show the Truexamine report generator form.
      */
@@ -185,9 +189,9 @@ PROMPT;
     }
 
     /**
-     * Download the last generated report as a PDF (from session).
+     * Download the last generated report as a Word document (from session).
      */
-    public function download(Request $request): Response
+    public function download(Request $request): BinaryFileResponse
     {
         /** @var array<string, mixed>|null $report */
         $report = $request->session()->get('truexamine_report');
@@ -200,17 +204,18 @@ PROMPT;
 
         $clientReference = trim((string) ($report['client_ref'] ?? ''));
         $filename = $clientReference !== ''
-            ? $clientReference.'.pdf'
-            : Str::slug((string) ($report['ams_ref'] ?? 'truexamine'), '-').'-Truexamine.pdf';
+            ? $clientReference.'.docx'
+            : Str::slug((string) ($report['ams_ref'] ?? 'truexamine'), '-').'-Truexamine.docx';
 
-        return Pdf::loadView('pdf.truexamine-report', ['report' => $report])
-            ->download($filename);
+        $binary = $this->truexamineReportDocxExporter->toBinary($report);
+
+        return $this->respondWithDocxDownload($binary, $filename, 'attachment');
     }
 
     /**
-     * Download a sample PDF to validate template fidelity quickly.
+     * Download a sample document to validate export layout quickly.
      */
-    public function testPdf(): Response
+    public function testDocx(): BinaryFileResponse
     {
         $report = [
             'vendor_name' => 'A.M.S. INFORM PRIVATE LIMITED',
@@ -346,12 +351,36 @@ PROMPT;
             'verifier_phone' => 'Not Available',
         ];
 
-        $pdf = Pdf::loadView('pdf.truexamine-report', ['report' => $report]);
+        $binary = $this->truexamineReportDocxExporter->toBinary($report);
 
-        return response($pdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="DXC-4001878-Truexamine.pdf"',
-        ]);
+        return $this->respondWithDocxDownload($binary, 'DXC-4001878-Truexamine.docx', 'inline');
+    }
+
+    /**
+     * Stream the DOCX through a temp file so the archive bytes are not mangled by the response pipeline.
+     */
+    private function respondWithDocxDownload(string $binary, string $downloadFilename, string $disposition): BinaryFileResponse
+    {
+        $tempPath = tempnam(sys_get_temp_dir(), 'txm-docx-');
+        if ($tempPath === false) {
+            abort(500, 'Unable to prepare document download.');
+        }
+
+        file_put_contents($tempPath, $binary);
+
+        $safeName = str_replace(['/', '\\', "\0"], '-', $downloadFilename);
+        if ($safeName === '' || $safeName === '-') {
+            $safeName = 'truexamine-report.docx';
+        }
+
+        return response()->download(
+            $tempPath,
+            $safeName,
+            [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ],
+            $disposition,
+        )->deleteFileAfterSend(true);
     }
 
     /**

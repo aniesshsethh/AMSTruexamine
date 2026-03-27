@@ -7,6 +7,39 @@ use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /**
+ * @throws RuntimeException
+ */
+function documentXmlFromDocxBinary(string $binary): string
+{
+    $tmp = tempnam(sys_get_temp_dir(), 'docx-test-');
+
+    if ($tmp === false) {
+        throw new RuntimeException('Unable to create temporary file for DOCX test.');
+    }
+
+    file_put_contents($tmp, $binary);
+
+    $zip = new ZipArchive;
+
+    if ($zip->open($tmp) !== true) {
+        unlink($tmp);
+        throw new RuntimeException('Invalid DOCX archive in test.');
+    }
+
+    $xml = $zip->getFromName('word/document.xml');
+    $zip->close();
+    if (is_file($tmp)) {
+        unlink($tmp);
+    }
+
+    if ($xml === false) {
+        throw new RuntimeException('Missing word/document.xml in DOCX.');
+    }
+
+    return $xml;
+}
+
+/**
  * @return array<string, mixed>
  */
 function sampleStructuredTruexamineReport(): array
@@ -205,44 +238,64 @@ test('download returns 404 when no report is in session', function () {
         ->assertNotFound();
 });
 
-test('download returns a pdf when report is in session', function () {
+test('download returns a docx when report is in session', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
         ->withSession(['truexamine_report' => sampleStructuredTruexamineReport()])
         ->get(route('truexamine-report.download'));
 
-    $response->assertDownload('DXC-4001878-Truexamine.pdf');
-    expect($response->headers->get('content-type'))->toContain('application/pdf');
+    $response->assertDownload('DXC-4001878-Truexamine.docx');
+    expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     expect(strtolower((string) $response->headers->get('content-disposition')))->toContain('attachment');
 });
 
-test('download decodes html entities before rendering pdf', function () {
+test('download produces well formed document xml when report contains ampersands and angle brackets', function () {
     $user = User::factory()->create();
     $report = sampleStructuredTruexamineReport();
-    $report['research_remarks'] = 'R&D verification completed';
-    $report['key_findings'] = ['1. R&amp;D experience was verified from provided records.'];
+    $report['annexure_rows'][0]['remarks'] = 'Foo & Bar <Holdings> "Test"';
+    $report['education_qualifications'][0]['remarks'] = 'Remarks with <placeholder> & special chars';
 
     $response = $this->actingAs($user)
         ->withSession(['truexamine_report' => $report])
         ->get(route('truexamine-report.download'));
 
-    $response->assertDownload('DXC-4001878-Truexamine.pdf');
-    $content = $response->streamedContent();
+    $response->assertDownload();
+    $xml = documentXmlFromDocxBinary($response->streamedContent());
 
-    expect($content)->toContain('R&D');
-    expect($content)->not->toContain('R&amp;amp;D');
+    $dom = new DOMDocument;
+    $loaded = @$dom->loadXML($xml);
+
+    expect($loaded)->toBeTrue();
 });
 
-test('test-pdf route returns reference-style pdf download', function () {
+test('download decodes html entities before rendering docx', function () {
+    $user = User::factory()->create();
+    $report = sampleStructuredTruexamineReport();
+    $report['annexure_rows'][0]['remarks'] = 'R&D verification completed';
+    $report['education_qualifications'][0]['remarks'] = '1. R&amp;D experience was verified from provided records.';
+
+    $response = $this->actingAs($user)
+        ->withSession(['truexamine_report' => $report])
+        ->get(route('truexamine-report.download'));
+
+    $response->assertDownload('DXC-4001878-Truexamine.docx');
+    $xml = documentXmlFromDocxBinary($response->streamedContent());
+    $decoded = html_entity_decode($xml, ENT_QUOTES | ENT_XML1 | ENT_HTML5, 'UTF-8');
+
+    expect($decoded)->not->toContain('R&amp;amp;D');
+    expect($decoded)->toContain('R&D');
+});
+
+test('test-docx route returns reference-style docx download', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
-        ->get(route('truexamine-report.test-pdf'));
+        ->get(route('truexamine-report.test-docx'));
 
     $response->assertOk();
-    expect($response->headers->get('content-type'))->toContain('application/pdf');
+    expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     expect(strtolower((string) $response->headers->get('content-disposition')))
         ->toContain('inline')
-        ->toContain('dxc-4001878-truexamine.pdf');
+        ->toContain('dxc-4001878-truexamine.docx');
 });
