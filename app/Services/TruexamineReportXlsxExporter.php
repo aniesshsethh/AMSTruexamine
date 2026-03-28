@@ -19,11 +19,128 @@ class TruexamineReportXlsxExporter
         $report = $this->sanitizeReportForExport($this->normalizeReport($report));
 
         $spreadsheet = new Spreadsheet;
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Truexamine');
 
+        $matrixSheet = $spreadsheet->getActiveSheet();
+        $matrixSheet->setTitle('Sheet1');
+        $this->writeTrueExamineMatrixSheet($matrixSheet, $report);
+
+        $supportingSheet = $spreadsheet->createSheet();
+        $supportingSheet->setTitle('Supporting data');
+        $this->writeSupportingDataSheet($supportingSheet, $report);
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'txm');
+        if ($tempPath === false) {
+            throw new \RuntimeException('Unable to create temporary file for XLSX export.');
+        }
+
+        try {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save($tempPath);
+            $binary = (string) file_get_contents($tempPath);
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+            if (is_file($tempPath)) {
+                unlink($tempPath);
+            }
+        }
+
+        return $binary;
+    }
+
+    /**
+     * Same column layout as the reference truexamine.xlsx rubric: Component | Parameter | Severity | Description.
+     *
+     * @param  array<string, mixed>  $report
+     */
+    private function writeTrueExamineMatrixSheet(Worksheet $sheet, array $report): void
+    {
         $row = 1;
-        $sheet->setCellValue("A{$row}", 'Truexamine Check Report');
+        $headers = ['Component', 'Parameter', 'Severity', 'Description'];
+        foreach (range(0, 3) as $i) {
+            $sheet->setCellValue([$i + 1, $row], $headers[$i]);
+        }
+        $this->applyHeaderStyle($sheet, $row, 1, 4);
+        $row++;
+
+        /** @var array<int, array<string, mixed>> $vchecks */
+        $vchecks = is_array($report['verification_checks'] ?? null) ? $report['verification_checks'] : [];
+        $reportColor = (string) ($report['report_color'] ?? '');
+
+        if ($vchecks === []) {
+            $sheet->setCellValue([1, $row], 'TrueExamine Check');
+            $sheet->setCellValue([2, $row], '—');
+            $sheet->setCellValue([3, $row], $this->severityFromReportColor($reportColor));
+            $sheet->setCellValue([4, $row], 'No verification_checks rows were present in the report.');
+            $row++;
+        } else {
+            foreach ($vchecks as $checkRow) {
+                $checkRow = is_array($checkRow) ? $checkRow : [];
+                $component = trim((string) ($checkRow['type_of_search'] ?? ''));
+                if ($component === '') {
+                    $component = 'TrueExamine Check';
+                }
+                $parameter = (string) ($checkRow['check_name'] ?? '');
+                $severity = $this->severityFromCheckResult(
+                    (string) ($checkRow['check_result'] ?? ''),
+                    $reportColor,
+                );
+                $description = $this->buildVerificationCheckDescription($checkRow);
+
+                $sheet->setCellValue([1, $row], $component);
+                $sheet->setCellValue([2, $row], $parameter);
+                $sheet->setCellValue([3, $row], $severity);
+                $sheet->setCellValue([4, $row], $description);
+                $row++;
+            }
+        }
+
+        $researchResult = trim((string) ($report['research_verification_result'] ?? ''));
+        $researchRemarks = trim((string) ($report['research_remarks'] ?? ''));
+        if ($researchResult !== '' || $researchRemarks !== '') {
+            $sheet->setCellValue([1, $row], 'Research');
+            $sheet->setCellValue([2, $row], $researchResult !== '' ? $researchResult : 'Remarks');
+            $sheet->setCellValue([3, $row], $this->severityFromReportColor($reportColor));
+            $sheet->setCellValue([4, $row], $researchRemarks !== '' ? $researchRemarks : '—');
+            $row++;
+        }
+
+        /** @var list<string> $findings */
+        $findings = [];
+        $rawFindings = $report['key_findings'] ?? null;
+        if (is_array($rawFindings)) {
+            foreach ($rawFindings as $f) {
+                if (is_string($f) && trim($f) !== '') {
+                    $findings[] = trim($f);
+                }
+            }
+        }
+
+        $findingIndex = 1;
+        foreach ($findings as $finding) {
+            $sheet->setCellValue([1, $row], 'Key finding');
+            $sheet->setCellValue([2, $row], 'Finding '.$findingIndex);
+            $sheet->setCellValue([3, $row], $this->severityFromReportColor($reportColor));
+            $sheet->setCellValue([4, $row], $finding);
+            $findingIndex++;
+            $row++;
+        }
+
+        foreach (range('A', 'D') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+    }
+
+    /**
+     * Employment annexure and education tables (previous single-sheet export content).
+     *
+     * @param  array<string, mixed>  $report
+     */
+    private function writeSupportingDataSheet(Worksheet $sheet, array $report): void
+    {
+        $row = 1;
+        $sheet->setCellValue("A{$row}", 'Truexamine Check Report — supporting tables');
         $sheet->getStyle("A{$row}")->getFont()->setBold(true);
         $row++;
 
@@ -101,24 +218,61 @@ class TruexamineReportXlsxExporter
         foreach (range('A', 'F') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
+    }
 
-        $tempPath = tempnam(sys_get_temp_dir(), 'txm');
-        if ($tempPath === false) {
-            throw new \RuntimeException('Unable to create temporary file for XLSX export.');
+    /**
+     * @param  array<string, mixed>  $checkRow
+     */
+    private function buildVerificationCheckDescription(array $checkRow): string
+    {
+        $parts = [];
+        $given = trim((string) ($checkRow['given'] ?? ''));
+        $verified = trim((string) ($checkRow['verified'] ?? ''));
+        $result = trim((string) ($checkRow['check_result'] ?? ''));
+
+        if ($given !== '') {
+            $parts[] = 'Given: '.$given;
+        }
+        if ($verified !== '') {
+            $parts[] = 'Verified: '.$verified;
+        }
+        if ($result !== '') {
+            $parts[] = 'Result: '.$result;
         }
 
-        try {
-            $writer = new Xlsx($spreadsheet);
-            $writer->save($tempPath);
-            $binary = (string) file_get_contents($tempPath);
-        } finally {
-            $spreadsheet->disconnectWorksheets();
-            if (is_file($tempPath)) {
-                unlink($tempPath);
-            }
+        return $parts !== [] ? implode(' | ', $parts) : '—';
+    }
+
+    private function severityFromCheckResult(string $checkResult, string $reportColor): string
+    {
+        $r = strtolower(trim($checkResult));
+        if ($r === '') {
+            return $this->severityFromReportColor($reportColor);
+        }
+        if (str_contains($r, 'amber') || str_contains($r, 'yellow')) {
+            return 'Amber';
+        }
+        if (str_contains($r, 'mismatch') || $r === 'fail' || str_contains($r, 'discrepancy')) {
+            return 'Red';
+        }
+        if ($r === 'pass' || str_contains($r, 'match found') || str_contains($r, 'clear')) {
+            return 'Green';
         }
 
-        return $binary;
+        return $this->severityFromReportColor($reportColor);
+    }
+
+    private function severityFromReportColor(string $reportColor): string
+    {
+        $c = strtoupper(trim($reportColor));
+        if (str_contains($c, 'GREEN')) {
+            return 'Green';
+        }
+        if (str_contains($c, 'AMBER') || str_contains($c, 'YELLOW')) {
+            return 'Amber';
+        }
+
+        return 'Red';
     }
 
     /**

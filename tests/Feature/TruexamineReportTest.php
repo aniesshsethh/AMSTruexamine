@@ -291,6 +291,15 @@ test('download returns an xlsx when report is in session', function () {
     $response->assertDownload('DXC-4001878-Truexamine.xlsx');
     expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     expect(strtolower((string) $response->headers->get('content-disposition')))->toContain('attachment');
+
+    $spreadsheet = spreadsheetFromXlsxBinary($response->streamedContent());
+    $sheet1 = $spreadsheet->getSheetByName('Sheet1');
+    expect($sheet1)->not->toBeNull();
+    expect($sheet1->getCell([1, 1])->getValue())->toBe('Component');
+    expect($sheet1->getCell([2, 1])->getValue())->toBe('Parameter');
+    expect($sheet1->getCell([3, 1])->getValue())->toBe('Severity');
+    expect($sheet1->getCell([4, 1])->getValue())->toBe('Description');
+    expect($spreadsheet->getSheetByName('Supporting data'))->not->toBeNull();
 });
 
 test('download produces well formed shared strings xml when report contains ampersands and angle brackets', function () {

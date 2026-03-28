@@ -89,9 +89,10 @@ export default function TruexamineReportPage() {
                         <p className="mt-1 text-muted-foreground text-sm">
                             Upload the UAN/PF PDF, CV PDF, and BGV profile PDF.
                             OpenAI generates a structured AMS-style TRUEXAMINE
-                            report. Download the Truexamine Check Report and
-                            Educational Qualifications tables as an Excel workbook
-                            (.xlsx) after generation.
+                            report. Download an Excel workbook (.xlsx) with a
+                            TrueExamine-style matrix (Component / Parameter /
+                            Severity / Description) plus supporting employment and
+                            education tables.
                         </p>
                     </div>
                 </div>
@@ -235,7 +236,7 @@ export default function TruexamineReportPage() {
                             <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="default" size="sm" asChild>
                                     <a href={xlsxDownloadUrl}>
-                                        Download Excel (.xlsx)
+                                        Download Excel
                                     </a>
                                 </Button>
                                 <span
