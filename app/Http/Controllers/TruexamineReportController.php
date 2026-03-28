@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Ai\Agents\TruexamineReportGenerator;
 use App\Ai\Agents\TruexamineUploadedDocumentClassifier;
 use App\Http\Requests\GenerateTruexamineReportRequest;
-use App\Services\TruexamineReportDocxExporter;
+use App\Services\TruexamineReportXlsxExporter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +20,7 @@ use Throwable;
 class TruexamineReportController extends Controller
 {
     public function __construct(
-        private readonly TruexamineReportDocxExporter $truexamineReportDocxExporter,
+        private readonly TruexamineReportXlsxExporter $truexamineReportXlsxExporter,
     ) {}
 
     /**
@@ -189,7 +189,7 @@ PROMPT;
     }
 
     /**
-     * Download the last generated report as a Word document (from session).
+     * Download the last generated report as an Excel workbook (from session).
      */
     public function download(Request $request): BinaryFileResponse
     {
@@ -204,18 +204,18 @@ PROMPT;
 
         $clientReference = trim((string) ($report['client_ref'] ?? ''));
         $filename = $clientReference !== ''
-            ? $clientReference.'.docx'
-            : Str::slug((string) ($report['ams_ref'] ?? 'truexamine'), '-').'-Truexamine.docx';
+            ? $clientReference.'.xlsx'
+            : Str::slug((string) ($report['ams_ref'] ?? 'truexamine'), '-').'-Truexamine.xlsx';
 
-        $binary = $this->truexamineReportDocxExporter->toBinary($report);
+        $binary = $this->truexamineReportXlsxExporter->toBinary($report);
 
-        return $this->respondWithDocxDownload($binary, $filename, 'attachment');
+        return $this->respondWithXlsxDownload($binary, $filename, 'attachment');
     }
 
     /**
-     * Download a sample document to validate export layout quickly.
+     * Download a sample workbook to validate export layout quickly.
      */
-    public function testDocx(): BinaryFileResponse
+    public function testXlsx(): BinaryFileResponse
     {
         $report = [
             'vendor_name' => 'A.M.S. INFORM PRIVATE LIMITED',
@@ -351,17 +351,17 @@ PROMPT;
             'verifier_phone' => 'Not Available',
         ];
 
-        $binary = $this->truexamineReportDocxExporter->toBinary($report);
+        $binary = $this->truexamineReportXlsxExporter->toBinary($report);
 
-        return $this->respondWithDocxDownload($binary, 'DXC-4001878-Truexamine.docx', 'inline');
+        return $this->respondWithXlsxDownload($binary, 'DXC-4001878-Truexamine.xlsx', 'inline');
     }
 
     /**
-     * Stream the DOCX through a temp file so the archive bytes are not mangled by the response pipeline.
+     * Stream the XLSX through a temp file so the archive bytes are not mangled by the response pipeline.
      */
-    private function respondWithDocxDownload(string $binary, string $downloadFilename, string $disposition): BinaryFileResponse
+    private function respondWithXlsxDownload(string $binary, string $downloadFilename, string $disposition): BinaryFileResponse
     {
-        $tempPath = tempnam(sys_get_temp_dir(), 'txm-docx-');
+        $tempPath = tempnam(sys_get_temp_dir(), 'txm-xlsx-');
         if ($tempPath === false) {
             abort(500, 'Unable to prepare document download.');
         }
@@ -370,14 +370,14 @@ PROMPT;
 
         $safeName = str_replace(['/', '\\', "\0"], '-', $downloadFilename);
         if ($safeName === '' || $safeName === '-') {
-            $safeName = 'truexamine-report.docx';
+            $safeName = 'truexamine-report.xlsx';
         }
 
         return response()->download(
             $tempPath,
             $safeName,
             [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ],
             $disposition,
         )->deleteFileAfterSend(true);

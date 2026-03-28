@@ -5,16 +5,40 @@ use App\Ai\Agents\TruexamineUploadedDocumentClassifier;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 /**
  * @throws RuntimeException
  */
-function documentXmlFromDocxBinary(string $binary): string
+function spreadsheetFromXlsxBinary(string $binary): Spreadsheet
 {
-    $tmp = tempnam(sys_get_temp_dir(), 'docx-test-');
+    $tmp = tempnam(sys_get_temp_dir(), 'xlsx-test-');
 
     if ($tmp === false) {
-        throw new RuntimeException('Unable to create temporary file for DOCX test.');
+        throw new RuntimeException('Unable to create temporary file for XLSX test.');
+    }
+
+    file_put_contents($tmp, $binary);
+
+    try {
+        return IOFactory::load($tmp);
+    } finally {
+        if (is_file($tmp)) {
+            unlink($tmp);
+        }
+    }
+}
+
+/**
+ * @throws RuntimeException
+ */
+function sharedStringsXmlFromXlsxBinary(string $binary): string
+{
+    $tmp = tempnam(sys_get_temp_dir(), 'xlsx-zip-test-');
+
+    if ($tmp === false) {
+        throw new RuntimeException('Unable to create temporary file for XLSX zip test.');
     }
 
     file_put_contents($tmp, $binary);
@@ -23,20 +47,39 @@ function documentXmlFromDocxBinary(string $binary): string
 
     if ($zip->open($tmp) !== true) {
         unlink($tmp);
-        throw new RuntimeException('Invalid DOCX archive in test.');
+        throw new RuntimeException('Invalid XLSX archive in test.');
     }
 
-    $xml = $zip->getFromName('word/document.xml');
+    $xml = $zip->getFromName('xl/sharedStrings.xml');
     $zip->close();
     if (is_file($tmp)) {
         unlink($tmp);
     }
 
     if ($xml === false) {
-        throw new RuntimeException('Missing word/document.xml in DOCX.');
+        return '';
     }
 
     return $xml;
+}
+
+function concatenateAllStringCellValues(Spreadsheet $spreadsheet): string
+{
+    $out = '';
+    foreach ($spreadsheet->getAllSheets() as $sheet) {
+        foreach ($sheet->getRowIterator() as $row) {
+            $cellIterator = $row->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
+            foreach ($cellIterator as $cell) {
+                $v = $cell->getValue();
+                if (is_string($v) && $v !== '') {
+                    $out .= $v."\n";
+                }
+            }
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -238,19 +281,19 @@ test('download returns 404 when no report is in session', function () {
         ->assertNotFound();
 });
 
-test('download returns a docx when report is in session', function () {
+test('download returns an xlsx when report is in session', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
         ->withSession(['truexamine_report' => sampleStructuredTruexamineReport()])
         ->get(route('truexamine-report.download'));
 
-    $response->assertDownload('DXC-4001878-Truexamine.docx');
-    expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    $response->assertDownload('DXC-4001878-Truexamine.xlsx');
+    expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     expect(strtolower((string) $response->headers->get('content-disposition')))->toContain('attachment');
 });
 
-test('download produces well formed document xml when report contains ampersands and angle brackets', function () {
+test('download produces well formed shared strings xml when report contains ampersands and angle brackets', function () {
     $user = User::factory()->create();
     $report = sampleStructuredTruexamineReport();
     $report['annexure_rows'][0]['remarks'] = 'Foo & Bar <Holdings> "Test"';
@@ -261,15 +304,20 @@ test('download produces well formed document xml when report contains ampersands
         ->get(route('truexamine-report.download'));
 
     $response->assertDownload();
-    $xml = documentXmlFromDocxBinary($response->streamedContent());
+    $xml = sharedStringsXmlFromXlsxBinary($response->streamedContent());
 
     $dom = new DOMDocument;
     $loaded = @$dom->loadXML($xml);
 
     expect($loaded)->toBeTrue();
+
+    $spreadsheet = spreadsheetFromXlsxBinary($response->streamedContent());
+    $cells = concatenateAllStringCellValues($spreadsheet);
+    expect($cells)->toContain('Foo & Bar <Holdings> "Test"');
+    expect($cells)->toContain('Remarks with <placeholder> & special chars');
 });
 
-test('download decodes html entities before rendering docx', function () {
+test('download decodes html entities before rendering xlsx', function () {
     $user = User::factory()->create();
     $report = sampleStructuredTruexamineReport();
     $report['annexure_rows'][0]['remarks'] = 'R&D verification completed';
@@ -279,23 +327,23 @@ test('download decodes html entities before rendering docx', function () {
         ->withSession(['truexamine_report' => $report])
         ->get(route('truexamine-report.download'));
 
-    $response->assertDownload('DXC-4001878-Truexamine.docx');
-    $xml = documentXmlFromDocxBinary($response->streamedContent());
-    $decoded = html_entity_decode($xml, ENT_QUOTES | ENT_XML1 | ENT_HTML5, 'UTF-8');
+    $response->assertDownload('DXC-4001878-Truexamine.xlsx');
+    $spreadsheet = spreadsheetFromXlsxBinary($response->streamedContent());
+    $cells = concatenateAllStringCellValues($spreadsheet);
 
-    expect($decoded)->not->toContain('R&amp;amp;D');
-    expect($decoded)->toContain('R&D');
+    expect($cells)->not->toContain('R&amp;D');
+    expect($cells)->toContain('R&D');
 });
 
-test('test-docx route returns reference-style docx download', function () {
+test('test-xlsx route returns reference-style xlsx download', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)
-        ->get(route('truexamine-report.test-docx'));
+        ->get(route('truexamine-report.test-xlsx'));
 
     $response->assertOk();
-    expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     expect(strtolower((string) $response->headers->get('content-disposition')))
         ->toContain('inline')
-        ->toContain('dxc-4001878-truexamine.docx');
+        ->toContain('dxc-4001878-truexamine.xlsx');
 });
