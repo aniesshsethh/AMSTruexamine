@@ -281,6 +281,14 @@ test('download returns 404 when no report is in session', function () {
         ->assertNotFound();
 });
 
+test('legacy employment-education download returns 404 when no report is in session', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('truexamine-report.download-employment-education'))
+        ->assertNotFound();
+});
+
 test('download returns an xlsx when report is in session', function () {
     $user = User::factory()->create();
 
@@ -300,6 +308,29 @@ test('download returns an xlsx when report is in session', function () {
     expect($sheet1->getCell([3, 1])->getValue())->toBe('Severity');
     expect($sheet1->getCell([4, 1])->getValue())->toBe('Description');
     expect($spreadsheet->getSheetByName('Supporting data'))->not->toBeNull();
+});
+
+test('legacy employment-education download returns a single-sheet xlsx with annexure and education rows', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)
+        ->withSession(['truexamine_report' => sampleStructuredTruexamineReport()])
+        ->get(route('truexamine-report.download-employment-education'));
+
+    $response->assertDownload('DXC-4001878-Truexamine-employment-education.xlsx');
+    expect($response->headers->get('content-type'))->toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $spreadsheet = spreadsheetFromXlsxBinary($response->streamedContent());
+    expect($spreadsheet->getSheetCount())->toBe(1);
+
+    $sheet = $spreadsheet->getSheetByName('Truexamine');
+    expect($sheet)->not->toBeNull();
+    expect($sheet->getCell([1, 1])->getValue())->toBe('Truexamine Check Report');
+    expect($sheet->getCell([1, 2])->getValue())->toBe('Employer Name');
+    expect($sheet->getCell([2, 2])->getValue())->toBe('PF');
+    expect($sheet->getCell([1, 3])->getValue())->toBe('Example Employer Pvt Ltd');
+    expect(concatenateAllStringCellValues($spreadsheet))->toContain('Educational Qualifications');
+    expect($sheet->getCell([1, 6])->getValue())->toBe('Qualification');
 });
 
 test('download produces well formed shared strings xml when report contains ampersands and angle brackets', function () {

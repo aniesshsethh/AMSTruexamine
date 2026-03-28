@@ -22,6 +22,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('truexamine-report/download', [TruexamineReportController::class, 'download'])
         ->middleware('throttle:30,1')
         ->name('truexamine-report.download');
+    Route::get('truexamine-report/download/employment-education', [TruexamineReportController::class, 'downloadLegacySupportingTables'])
+        ->middleware('throttle:30,1')
+        ->name('truexamine-report.download-employment-education');
     Route::get('truexamine-report/test-xlsx', [TruexamineReportController::class, 'testXlsx'])
         ->middleware('throttle:30,1')
         ->name('truexamine-report.test-xlsx');

@@ -11,6 +11,8 @@ import type { BreadcrumbItem } from '@/types';
 
 const formAction = '/truexamine-report';
 const xlsxDownloadUrl = '/truexamine-report/download';
+const legacySupportingDownloadUrl =
+    '/truexamine-report/download/employment-education';
 
 export type TruexamineReport = {
     vendor_name: string;
@@ -89,10 +91,10 @@ export default function TruexamineReportPage() {
                         <p className="mt-1 text-muted-foreground text-sm">
                             Upload the UAN/PF PDF, CV PDF, and BGV profile PDF.
                             OpenAI generates a structured AMS-style TRUEXAMINE
-                            report. Download an Excel workbook (.xlsx) with a
-                            TrueExamine-style matrix (Component / Parameter /
-                            Severity / Description) plus supporting employment and
-                            education tables.
+                            report. Download a full Excel workbook with a
+                            TrueExamine-style matrix plus supporting tables, or
+                            a legacy file with one sheet: one row per employment
+                            spell and per education qualification.
                         </p>
                     </div>
                 </div>
@@ -236,7 +238,12 @@ export default function TruexamineReportPage() {
                             <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="default" size="sm" asChild>
                                     <a href={xlsxDownloadUrl}>
-                                        Download Excel
+                                        Download Excel (full)
+                                    </a>
+                                </Button>
+                                <Button variant="outline" size="sm" asChild>
+                                    <a href={legacySupportingDownloadUrl}>
+                                        Download employment & education
                                     </a>
                                 </Button>
                                 <span

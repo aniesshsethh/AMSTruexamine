@@ -30,6 +30,29 @@ class TruexamineReportXlsxExporter
 
         $spreadsheet->setActiveSheetIndex(0);
 
+        return $this->spreadsheetToXlsxBinary($spreadsheet);
+    }
+
+    /**
+     * Original single-sheet workbook: one row per employment spell and per education qualification
+     * (same column layout as before the TrueExamine matrix export was added).
+     *
+     * @param  array<string, mixed>  $report
+     */
+    public function toBinaryLegacySupportingTables(array $report): string
+    {
+        $report = $this->sanitizeReportForExport($this->normalizeReport($report));
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Truexamine');
+        $this->writeSupportingDataSheet($sheet, $report, 'Truexamine Check Report');
+
+        return $this->spreadsheetToXlsxBinary($spreadsheet);
+    }
+
+    private function spreadsheetToXlsxBinary(Spreadsheet $spreadsheet): string
+    {
         $tempPath = tempnam(sys_get_temp_dir(), 'txm');
         if ($tempPath === false) {
             throw new \RuntimeException('Unable to create temporary file for XLSX export.');
@@ -133,14 +156,17 @@ class TruexamineReportXlsxExporter
     }
 
     /**
-     * Employment annexure and education tables (previous single-sheet export content).
+     * Employment annexure and education tables (original single-sheet export content).
      *
      * @param  array<string, mixed>  $report
      */
-    private function writeSupportingDataSheet(Worksheet $sheet, array $report): void
-    {
+    private function writeSupportingDataSheet(
+        Worksheet $sheet,
+        array $report,
+        string $bannerTitle = 'Truexamine Check Report — supporting tables',
+    ): void {
         $row = 1;
-        $sheet->setCellValue("A{$row}", 'Truexamine Check Report — supporting tables');
+        $sheet->setCellValue("A{$row}", $bannerTitle);
         $sheet->getStyle("A{$row}")->getFont()->setBold(true);
         $row++;
 

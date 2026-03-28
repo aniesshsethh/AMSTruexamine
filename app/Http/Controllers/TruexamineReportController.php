@@ -213,6 +213,30 @@ PROMPT;
     }
 
     /**
+     * Download employment annexure and education tables only, in the legacy single-sheet layout.
+     */
+    public function downloadLegacySupportingTables(Request $request): BinaryFileResponse
+    {
+        /** @var array<string, mixed>|null $report */
+        $report = $request->session()->get('truexamine_report');
+
+        if (! is_array($report)) {
+            abort(404);
+        }
+
+        $report = $this->decodeHtmlEntities($report);
+
+        $clientReference = trim((string) ($report['client_ref'] ?? ''));
+        $filename = $clientReference !== ''
+            ? $clientReference.'-employment-education.xlsx'
+            : Str::slug((string) ($report['ams_ref'] ?? 'truexamine'), '-').'-employment-education.xlsx';
+
+        $binary = $this->truexamineReportXlsxExporter->toBinaryLegacySupportingTables($report);
+
+        return $this->respondWithXlsxDownload($binary, $filename, 'attachment');
+    }
+
+    /**
      * Download a sample workbook to validate export layout quickly.
      */
     public function testXlsx(): BinaryFileResponse
