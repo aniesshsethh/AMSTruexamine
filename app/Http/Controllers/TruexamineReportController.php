@@ -116,9 +116,9 @@ Bidirectional reconciliation rule (strict):
 - In short: anything present in one source but absent in another source must be detected and explicitly reported.
 
 Include verifier_name, verifier_designation, verifier_email, and verifier_phone (use "Research" / "Not Available" when appropriate per your instructions). Number key_findings as "1. ...", "2. ...", covering undeclared UAN employment vs CV/BGV, real date mismatches, UAN employer transitions, and UAN gaps explained (e.g. pre-Oct 2014 tenure).
-Include annexure_rows with one row per company/employment spell and fields: employer_name, employment_start_date, employment_end_date, pf_match, bgv_match, cv_match, match_status, remarks.
+Include annexure_rows with one row per company/employment spell and fields: employer_name, employment_start_date, employment_end_date, pf_match, bgv_match, cv_match, match_status, cv_tenure, bgv_tenure, uan_tenure, discrepancy_type, remarks. The three tenure fields must reflect what each source (CV, BGV, UAN) actually states for that spell (e.g. "Not Declared", "to NA", "N/A" when appropriate). discrepancy_type is the client-facing label (e.g. Clear, Minor Discrepancy).
 If UAN/PF shows a joining date but no exit date for a spell and only the start date matches CV/BGV, set pf_match to Partial (not Yes) and note in remarks.
-Include education_qualifications with one row per qualification and fields: qualification, institution, education_period_start, education_period_end, year, cv_match, bgv_match, remarks.
+Include education_qualifications with one row per qualification and fields: qualification, institution, education_period_start, education_period_end, year, cv_match, bgv_match, cv_tenure, bgv_tenure, uan_tenure (usually Not applicable), discrepancy_type, remarks.
 EDUCATION DATE FIELDS (mandatory — Excel export reads these keys):
 For EVERY object in education_qualifications[], set education_period_start and education_period_end to full ISO dates (YYYY-MM-DD). Never leave both as "" if year is a four-digit value like "2012".
 Example when CV shows only "B.Tech, 2012": "education_period_start":"2012-01-01","education_period_end":"2012-12-31","year":"2012"
@@ -313,6 +313,10 @@ PROMPT;
                     'bgv_match' => 'Yes',
                     'cv_match' => 'Yes',
                     'match_status' => 'Match',
+                    'cv_tenure' => '06/12/2016 – Present',
+                    'bgv_tenure' => '06/12/2016 – Present',
+                    'uan_tenure' => '06/12/2016 – Present',
+                    'discrepancy_type' => 'Clear',
                     'remarks' => 'Employer transitioned from IBM to Kyndryl in 2021 and is consistent across records.',
                 ],
                 [
@@ -323,6 +327,10 @@ PROMPT;
                     'bgv_match' => 'Yes',
                     'cv_match' => 'Yes',
                     'match_status' => 'Match',
+                    'cv_tenure' => '05/11/2014 – 10/10/2016',
+                    'bgv_tenure' => '05/11/2014 – 10/10/2016',
+                    'uan_tenure' => '05/11/2014 – 10/10/2016',
+                    'discrepancy_type' => 'Clear',
                     'remarks' => 'Declared employment matches in PF, CV, and BGV.',
                 ],
                 [
@@ -333,6 +341,10 @@ PROMPT;
                     'bgv_match' => 'No',
                     'cv_match' => 'No',
                     'match_status' => 'Undeclared Employment',
+                    'cv_tenure' => 'Not Declared',
+                    'bgv_tenure' => 'Not Declared',
+                    'uan_tenure' => '11/12/2009 – 04/11/2014',
+                    'discrepancy_type' => 'Undeclared Employment',
                     'remarks' => 'Employment spell appears in PF but is missing in CV and BGV.',
                 ],
                 [
@@ -343,6 +355,10 @@ PROMPT;
                     'bgv_match' => 'Yes',
                     'cv_match' => 'Partial',
                     'match_status' => 'Partial Match',
+                    'cv_tenure' => '24/02/2013 – 20/10/2014',
+                    'bgv_tenure' => '25/02/2013 – 20/10/2014',
+                    'uan_tenure' => '25/02/2013 – 20/10/2014',
+                    'discrepancy_type' => 'Minor Discrepancy',
                     'remarks' => 'Company is present in all sources; CV joining date differs by 1 day.',
                 ],
                 [
@@ -353,6 +369,10 @@ PROMPT;
                     'bgv_match' => 'Yes',
                     'cv_match' => 'Yes',
                     'match_status' => 'Mismatch',
+                    'cv_tenure' => '26/04/2010 – 25/02/2013',
+                    'bgv_tenure' => '26/04/2010 – 25/02/2013',
+                    'uan_tenure' => 'Not applicable',
+                    'discrepancy_type' => 'Mismatch',
                     'remarks' => 'Not available in PF/UAN; likely pre-UAN period or PF transfer/non-linking.',
                 ],
             ],
@@ -365,6 +385,10 @@ PROMPT;
                     'year' => '2009',
                     'cv_match' => 'Yes',
                     'bgv_match' => 'Yes',
+                    'cv_tenure' => '2009',
+                    'bgv_tenure' => '2009',
+                    'uan_tenure' => 'Not applicable',
+                    'discrepancy_type' => 'Clear',
                     'remarks' => 'Qualification details align between CV and BGV.',
                 ],
                 [
@@ -375,6 +399,10 @@ PROMPT;
                     'year' => '2005',
                     'cv_match' => 'Yes',
                     'bgv_match' => 'Yes',
+                    'cv_tenure' => '2005',
+                    'bgv_tenure' => '2005',
+                    'uan_tenure' => 'Not applicable',
+                    'discrepancy_type' => 'Clear',
                     'remarks' => 'Reported consistently in available documents.',
                 ],
             ],

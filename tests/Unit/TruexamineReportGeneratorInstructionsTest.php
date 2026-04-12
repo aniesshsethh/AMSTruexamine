@@ -19,6 +19,15 @@ test('truexamine agent instructions require partial pf_match when PF lacks exit 
         ->toContain('pf_match to Partial');
 });
 
+test('truexamine agent instructions require supporting tenure columns for export layout', function () {
+    $instructions = (string) TruexamineReportGenerator::make()->instructions();
+
+    expect($instructions)
+        ->toContain('cv_tenure')
+        ->toContain('discrepancy_type')
+        ->toContain('uan_tenure');
+});
+
 test('truexamine agent instructions require key finding themes and verifier defaults', function () {
     $instructions = (string) TruexamineReportGenerator::make()->instructions();
 

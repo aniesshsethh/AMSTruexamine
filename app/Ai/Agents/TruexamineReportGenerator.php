@@ -75,6 +75,10 @@ Annexure table data (for the annexure page):
   - bgv_match (Yes/No/Partial)
   - cv_match (Yes/No/Partial)
   - match_status (examples: "Match", "Partial Match", "Mismatch", "Undeclared Employment")
+  - cv_tenure — exact tenure wording as stated on the CV for this spell (e.g. "2012 – Present", "Not Declared" if absent from CV)
+  - bgv_tenure — as stated on the BGV profile (e.g. "03-Jun-2015 to NA" when end date missing)
+  - uan_tenure — as stated on UAN/PF for this spell (e.g. "03-Jun-2015 – N/A" when exit not shown; use "Not applicable" only when UAN truly does not apply)
+  - discrepancy_type — client-facing label for the row (e.g. "Clear", "Minor Discrepancy", "Minor Mismatch in Tenure & Undeclared Employment")
   - remarks
 - Use factual values from the PDFs only.
 - Annexure (employment) remarks style — write exactly one short sentence ending with a full stop. Use neutral, client-facing wording like an executive summary line (not bullet lists, not multiple sentences). Match this tone and pattern; adapt the facts to the row:
@@ -96,6 +100,10 @@ Education table data (for the annexure page):
   - year (completion or passing year as text, e.g. "2009"; use "Not Available" if unknown — must match the calendar year used in education_period_* when you applied the YYYY-01-01 / YYYY-12-31 rule)
   - cv_match (Yes/No/Partial)
   - bgv_match (Yes/No/Partial)
+  - cv_tenure — tenure as on CV (often a year e.g. "2012")
+  - bgv_tenure — tenure as on BGV
+  - uan_tenure — normally "Not applicable" for education
+  - discrepancy_type — e.g. "Clear" when CV and BGV align
   - remarks
 - Include ALL identified qualifications (not just mismatches). If a field is unavailable, use "Not Available".
 - Education remarks style — same as employment: one short sentence, ends with a full stop, neutral executive-summary tone. Examples (adapt to the qualification):
@@ -135,6 +143,10 @@ INSTRUCTIONS;
             'bgv_match' => $schema->string()->required(),
             'cv_match' => $schema->string()->required(),
             'match_status' => $schema->string()->required(),
+            'cv_tenure' => $schema->string()->required()->description('Tenure as stated on the CV for this employment spell.'),
+            'bgv_tenure' => $schema->string()->required()->description('Tenure as stated on the BGV profile.'),
+            'uan_tenure' => $schema->string()->required()->description('Tenure as stated on UAN/PF.'),
+            'discrepancy_type' => $schema->string()->required()->description('e.g. Clear, Minor Discrepancy, Undeclared Employment.'),
             'remarks' => $schema->string()->required(),
         ])->withoutAdditionalProperties();
 
@@ -150,6 +162,10 @@ INSTRUCTIONS;
             'year' => $schema->string()->required(),
             'cv_match' => $schema->string()->required(),
             'bgv_match' => $schema->string()->required(),
+            'cv_tenure' => $schema->string()->required()->description('Tenure as on CV, often a year.'),
+            'bgv_tenure' => $schema->string()->required()->description('Tenure as on BGV.'),
+            'uan_tenure' => $schema->string()->required()->description('Usually Not applicable for education.'),
+            'discrepancy_type' => $schema->string()->required()->description('e.g. Clear when records align.'),
             'remarks' => $schema->string()->required(),
         ])->withoutAdditionalProperties();
 

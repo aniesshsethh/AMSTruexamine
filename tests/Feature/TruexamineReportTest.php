@@ -132,6 +132,10 @@ function sampleStructuredTruexamineReport(): array
                 'bgv_match' => 'Yes',
                 'cv_match' => 'Yes',
                 'match_status' => 'Match',
+                'cv_tenure' => '01/01/2020 - 31/01/2022',
+                'bgv_tenure' => '01/01/2020 - 31/01/2022',
+                'uan_tenure' => '01/01/2020 - 31/01/2022',
+                'discrepancy_type' => 'Clear',
                 'remarks' => 'Synthetic row for tests.',
             ],
         ],
@@ -144,6 +148,10 @@ function sampleStructuredTruexamineReport(): array
                 'year' => '2012',
                 'cv_match' => 'Yes',
                 'bgv_match' => 'Yes',
+                'cv_tenure' => '2012',
+                'bgv_tenure' => '2012',
+                'uan_tenure' => 'Not applicable',
+                'discrepancy_type' => 'Clear',
                 'remarks' => 'Synthetic education row for tests.',
             ],
         ],
@@ -319,8 +327,12 @@ test('download returns an xlsx when report is in session', function () {
     $supporting = $spreadsheet->getSheetByName('Supporting data');
     expect($supporting)->not->toBeNull();
     expect($supporting->getCell([1, 1])->getValue())->toBe('Truexamine Check Report -Executive Summary');
-    expect($supporting->getCell([5, 2])->getValue())->toBe('CV/Resume');
-    expect($supporting->getCell([4, 6])->getValue())->toBe('CV/Resume');
+    expect($supporting->getCell([1, 2])->getValue())->toBe('Employer & Education Name');
+    expect($supporting->getCell([2, 2])->getValue())->toBe('CV Tenure');
+    expect($supporting->getCell([4, 2])->getValue())->toBe('UAN Tenure');
+    expect($supporting->getCell([1, 3])->getValue())->toBe('Example Employer Pvt Ltd');
+    expect($supporting->getCell([2, 3])->getValue())->toBe('01/01/2020 - 31/01/2022');
+    expect($supporting->getCell([1, 4])->getValue())->toBe('Example University – B.Tech');
 });
 
 test('legacy employment-education download returns a single-sheet xlsx with annexure and education rows', function () {
@@ -339,23 +351,23 @@ test('legacy employment-education download returns a single-sheet xlsx with anne
     $sheet = $spreadsheet->getSheetByName('Truexamine');
     expect($sheet)->not->toBeNull();
     expect($sheet->getCell([1, 1])->getValue())->toBe('Truexamine Check Report');
-    expect($sheet->getCell([1, 2])->getValue())->toBe('Employer Name');
-    expect($sheet->getCell([2, 2])->getValue())->toBe('Employment period');
-    expect($sheet->getCell([3, 2])->getValue())->toBe('UAN-PF');
-    expect($sheet->getCell([5, 2])->getValue())->toBe('CV/Resume');
+    expect($sheet->getCell([1, 2])->getValue())->toBe('Employer & Education Name');
+    expect($sheet->getCell([2, 2])->getValue())->toBe('CV Tenure');
+    expect($sheet->getCell([4, 2])->getValue())->toBe('UAN Tenure');
     expect($sheet->getCell([1, 3])->getValue())->toBe('Example Employer Pvt Ltd');
     expect($sheet->getCell([2, 3])->getValue())->toBe('01/01/2020 - 31/01/2022');
-    expect(concatenateAllStringCellValues($spreadsheet))->toContain('Educational Qualifications');
-    expect($sheet->getCell([1, 6])->getValue())->toBe('Qualification');
-    expect($sheet->getCell([4, 6])->getValue())->toBe('CV/Resume');
-    expect($sheet->getCell([3, 6])->getValue())->toBe('Year');
-    expect((string) $sheet->getCell([3, 7])->getValue())->toBe('2012');
+    expect(concatenateAllStringCellValues($spreadsheet))->toContain('Employer & Education Name');
+    expect($sheet->getCell([1, 4])->getValue())->toBe('Example University – B.Tech');
+    expect((string) $sheet->getCell([2, 4])->getValue())->toBe('2012');
 });
 
 test('supporting data export leaves Present as the employment end label', function () {
     $user = User::factory()->create();
     $report = sampleStructuredTruexamineReport();
     $report['annexure_rows'][0]['employment_end_date'] = 'Present';
+    $report['annexure_rows'][0]['cv_tenure'] = '';
+    $report['annexure_rows'][0]['bgv_tenure'] = '';
+    $report['annexure_rows'][0]['uan_tenure'] = '';
 
     $response = $this->actingAs($user)
         ->withSession(['truexamine_report' => $report])

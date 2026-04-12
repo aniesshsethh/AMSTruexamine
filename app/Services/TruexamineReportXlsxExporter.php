@@ -35,8 +35,7 @@ class TruexamineReportXlsxExporter
     }
 
     /**
-     * Original single-sheet workbook: one row per employment spell and per education qualification
-     * (same column layout as before the TrueExamine matrix export was added).
+     * Original single-sheet workbook: supporting table (employment + education) in Trueexamine layout.
      *
      * @param  array<string, mixed>  $report
      */
@@ -187,7 +186,7 @@ class TruexamineReportXlsxExporter
     }
 
     /**
-     * Employment annexure and education tables (original single-sheet export content).
+     * Trueexamine-style supporting table: one list of employment and education rows (six columns).
      *
      * @param  array<string, mixed>  $report
      */
@@ -205,70 +204,60 @@ class TruexamineReportXlsxExporter
         $annexureRows = is_array($report['annexure_rows'] ?? null) ? $report['annexure_rows'] : [];
         /** @var array<int, array<string, mixed>> $vchecks */
         $vchecks = is_array($report['verification_checks'] ?? null) ? $report['verification_checks'] : [];
+        /** @var array<int, array<string, mixed>> $edu */
+        $edu = is_array($report['education_qualifications'] ?? null) ? $report['education_qualifications'] : [];
 
-        $annexureHeaders = ['Employer Name', 'Employment period', 'UAN-PF', 'BGV Profile', 'CV/Resume', 'Match Status', 'Remarks'];
+        $headers = [
+            'Employer & Education Name',
+            'CV Tenure',
+            'BGV Profile Tenure',
+            'UAN Tenure',
+            'Discrepancy Type',
+            'Remarks',
+        ];
         $headerRow = $row;
-        foreach (range(0, 6) as $i) {
-            $sheet->setCellValue([$i + 1, $row], $annexureHeaders[$i]);
+        foreach (range(0, 5) as $i) {
+            $sheet->setCellValue([$i + 1, $row], $headers[$i]);
         }
-        $this->applyHeaderStyle($sheet, $headerRow, 1, 7);
+        $this->applyHeaderStyle($sheet, $headerRow, 1, 6);
         $row++;
 
         if ($annexureRows !== []) {
             foreach ($annexureRows as $ar) {
                 $ar = is_array($ar) ? $ar : [];
-                $sheet->setCellValue([1, $row], (string) ($ar['employer_name'] ?? ''));
-                $sheet->setCellValue([2, $row], $this->formatOptionalDateRange(
-                    (string) ($ar['employment_start_date'] ?? ''),
-                    (string) ($ar['employment_end_date'] ?? ''),
-                ));
-                $sheet->setCellValue([3, $row], (string) ($ar['pf_match'] ?? ''));
-                $sheet->setCellValue([4, $row], (string) ($ar['bgv_match'] ?? ''));
-                $sheet->setCellValue([5, $row], (string) ($ar['cv_match'] ?? ''));
-                $sheet->setCellValue([6, $row], (string) ($ar['match_status'] ?? ''));
-                $sheet->setCellValue([7, $row], (string) ($ar['remarks'] ?? ''));
+                [$c1, $c2, $c3, $c4, $c5, $c6] = $this->supportingDataCellsForEmploymentRow($ar);
+                $sheet->setCellValue([1, $row], $c1);
+                $sheet->setCellValue([2, $row], $c2);
+                $sheet->setCellValue([3, $row], $c3);
+                $sheet->setCellValue([4, $row], $c4);
+                $sheet->setCellValue([5, $row], $c5);
+                $sheet->setCellValue([6, $row], $c6);
                 $row++;
             }
         } else {
             foreach ($vchecks as $checkRow) {
                 $checkRow = is_array($checkRow) ? $checkRow : [];
-                $pass = (($checkRow['check_result'] ?? '') === 'Pass') ? 'Match' : 'Mismatch';
+                $passes = $this->verificationCheckResultIsPassing((string) ($checkRow['check_result'] ?? ''));
                 $sheet->setCellValue([1, $row], (string) ($checkRow['check_name'] ?? ''));
                 $sheet->setCellValue([2, $row], '-');
                 $sheet->setCellValue([3, $row], '-');
                 $sheet->setCellValue([4, $row], '-');
-                $sheet->setCellValue([5, $row], '-');
-                $sheet->setCellValue([6, $row], $pass);
-                $sheet->setCellValue([7, $row], (string) ($report['research_remarks'] ?? '-'));
+                $sheet->setCellValue([5, $row], $passes ? 'Clear' : 'Discrepancy');
+                $sheet->setCellValue([6, $row], (string) ($report['research_remarks'] ?? '-'));
                 $row++;
             }
         }
 
-        $row++;
-        $sheet->setCellValue("A{$row}", 'Educational Qualifications');
-        $sheet->getStyle("A{$row}")->getFont()->setBold(true);
-        $row++;
-
-        /** @var array<int, array<string, mixed>> $edu */
-        $edu = is_array($report['education_qualifications'] ?? null) ? $report['education_qualifications'] : [];
-
-        $eduHeaders = ['Qualification', 'Institution', 'Year', 'CV/Resume', 'BGV Profile', 'Remarks'];
-        $eduHeaderRow = $row;
-        foreach (range(0, 5) as $i) {
-            $sheet->setCellValue([$i + 1, $row], $eduHeaders[$i]);
-        }
-        $this->applyHeaderStyle($sheet, $eduHeaderRow, 1, 6);
-        $row++;
-
         if ($edu !== []) {
             foreach ($edu as $er) {
                 $er = is_array($er) ? $er : [];
-                $sheet->setCellValue([1, $row], (string) ($er['qualification'] ?? ''));
-                $sheet->setCellValue([2, $row], (string) ($er['institution'] ?? ''));
-                $sheet->setCellValue([3, $row], (string) ($er['year'] ?? ''));
-                $sheet->setCellValue([4, $row], (string) ($er['cv_match'] ?? ''));
-                $sheet->setCellValue([5, $row], (string) ($er['bgv_match'] ?? ''));
-                $sheet->setCellValue([6, $row], (string) ($er['remarks'] ?? ''));
+                [$c1, $c2, $c3, $c4, $c5, $c6] = $this->supportingDataCellsForEducationRow($er);
+                $sheet->setCellValue([1, $row], $c1);
+                $sheet->setCellValue([2, $row], $c2);
+                $sheet->setCellValue([3, $row], $c3);
+                $sheet->setCellValue([4, $row], $c4);
+                $sheet->setCellValue([5, $row], $c5);
+                $sheet->setCellValue([6, $row], $c6);
                 $row++;
             }
         } else {
@@ -277,9 +266,141 @@ class TruexamineReportXlsxExporter
             $row++;
         }
 
-        foreach (range('A', 'G') as $col) {
+        foreach (range('A', 'F') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $ar
+     * @return array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string}
+     */
+    private function supportingDataCellsForEmploymentRow(array $ar): array
+    {
+        $name = (string) ($ar['employer_name'] ?? '');
+        $start = trim((string) ($ar['employment_start_date'] ?? ''));
+        $end = trim((string) ($ar['employment_end_date'] ?? ''));
+        $range = $this->formatOptionalDateRange($start, $end);
+
+        $cvTenure = trim((string) ($ar['cv_tenure'] ?? ''));
+        if ($cvTenure === '') {
+            $cvTenure = $this->supportingTenureFallbackForSource(
+                (string) ($ar['cv_match'] ?? ''),
+                $range,
+                notDeclaredLabel: 'Not Declared',
+            );
+        }
+
+        $bgvTenure = trim((string) ($ar['bgv_tenure'] ?? ''));
+        if ($bgvTenure === '') {
+            $bgvTenure = $this->supportingTenureFallbackForSource(
+                (string) ($ar['bgv_match'] ?? ''),
+                $range,
+                notDeclaredLabel: 'Not Declared',
+            );
+        }
+
+        $uanTenure = trim((string) ($ar['uan_tenure'] ?? ''));
+        if ($uanTenure === '') {
+            $pf = strtoupper(trim((string) ($ar['pf_match'] ?? '')));
+            if ($pf === 'NO') {
+                $uanTenure = 'Not applicable';
+            } elseif ($range !== '') {
+                $uanTenure = $range;
+            } else {
+                $uanTenure = 'N/A';
+            }
+        }
+
+        $discrepancy = trim((string) ($ar['discrepancy_type'] ?? ''));
+        if ($discrepancy === '') {
+            $discrepancy = trim((string) ($ar['match_status'] ?? ''));
+        }
+        if ($discrepancy === '') {
+            $discrepancy = '—';
+        }
+
+        return [
+            $name,
+            $cvTenure,
+            $bgvTenure,
+            $uanTenure,
+            $discrepancy,
+            (string) ($ar['remarks'] ?? ''),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $er
+     * @return array{0: string, 1: string, 2: string, 3: string, 4: string, 5: string}
+     */
+    private function supportingDataCellsForEducationRow(array $er): array
+    {
+        $institution = trim((string) ($er['institution'] ?? ''));
+        $qualification = trim((string) ($er['qualification'] ?? ''));
+        $name = match (true) {
+            $institution !== '' && $qualification !== '' => $institution.' – '.$qualification,
+            $institution !== '' => $institution,
+            default => $qualification,
+        };
+
+        $year = trim((string) ($er['year'] ?? ''));
+        $range = $this->formatOptionalDateRange(
+            (string) ($er['education_period_start'] ?? ''),
+            (string) ($er['education_period_end'] ?? ''),
+        );
+        $yearOrRange = $year !== '' ? $year : ($range !== '' ? $range : 'Not Available');
+
+        $cvTenure = trim((string) ($er['cv_tenure'] ?? ''));
+        if ($cvTenure === '') {
+            $cvTenure = $yearOrRange;
+        }
+
+        $bgvTenure = trim((string) ($er['bgv_tenure'] ?? ''));
+        if ($bgvTenure === '') {
+            $bgvTenure = $yearOrRange;
+        }
+
+        $uanTenure = trim((string) ($er['uan_tenure'] ?? ''));
+        if ($uanTenure === '') {
+            $uanTenure = 'Not applicable';
+        }
+
+        $discrepancy = trim((string) ($er['discrepancy_type'] ?? ''));
+        if ($discrepancy === '') {
+            $cv = strtoupper(trim((string) ($er['cv_match'] ?? '')));
+            $bgv = strtoupper(trim((string) ($er['bgv_match'] ?? '')));
+            $discrepancy = ($cv === 'YES' && $bgv === 'YES') ? 'Clear' : 'Discrepancy';
+        }
+
+        return [
+            $name,
+            $cvTenure,
+            $bgvTenure,
+            $uanTenure,
+            $discrepancy,
+            (string) ($er['remarks'] ?? ''),
+        ];
+    }
+
+    private function supportingTenureFallbackForSource(string $match, string $range, string $notDeclaredLabel): string
+    {
+        $token = strtoupper(trim($match));
+        if ($token === 'NO') {
+            return $notDeclaredLabel;
+        }
+        if ($range !== '') {
+            return $range;
+        }
+
+        return 'Not Available';
+    }
+
+    private function verificationCheckResultIsPassing(string $checkResult): bool
+    {
+        $r = strtolower(trim($checkResult));
+
+        return $r === 'pass' || str_contains($r, 'match found') || str_contains($r, 'clear');
     }
 
     private function formatOptionalDateRange(string $start, string $end): string
