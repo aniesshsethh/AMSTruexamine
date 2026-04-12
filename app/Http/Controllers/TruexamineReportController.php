@@ -117,9 +117,13 @@ Bidirectional reconciliation rule (strict):
 
 Include verifier_name, verifier_designation, verifier_email, and verifier_phone (use "Research" / "Not Available" when appropriate per your instructions). Number key_findings as "1. ...", "2. ...", covering undeclared UAN employment vs CV/BGV, real date mismatches, UAN employer transitions, and UAN gaps explained (e.g. pre-Oct 2014 tenure).
 Include annexure_rows with one row per company/employment spell and fields: employer_name, employment_start_date, employment_end_date, pf_match, bgv_match, cv_match, match_status, remarks.
-Include education_qualifications with one row per qualification and fields: qualification, institution, year, cv_match, bgv_match, remarks.
-Keep each annexure_rows.remarks value very short (maximum 12 words).
-Keep each education_qualifications.remarks value very short (maximum 10 words).
+Include education_qualifications with one row per qualification and fields: qualification, institution, education_period_start, education_period_end, year, cv_match, bgv_match, remarks.
+EDUCATION DATE FIELDS (mandatory — Excel export reads these keys):
+For EVERY object in education_qualifications[], set education_period_start and education_period_end to full ISO dates (YYYY-MM-DD). Never leave both as "" if year is a four-digit value like "2012".
+Example when CV shows only "B.Tech, 2012": "education_period_start":"2012-01-01","education_period_end":"2012-12-31","year":"2012"
+When CV/BGV show real dates, use those dates instead of the 01-01 / 12-31 placeholder.
+Use "" for both period fields only when year is "Not Available" or the qualification has no timing in the documents.
+Phrase annexure_rows.remarks and education_qualifications.remarks as a single short factual sentence ending with a period, in the style of: "Shown only in UAN record.", "Dates align across records.", "Qualification aligns in both records.", "Certification only found in CV." — not bullet lists or long paragraphs.
 PROMPT;
 
         try {
@@ -355,6 +359,8 @@ PROMPT;
                 [
                     'qualification' => 'Bachelor of Technology (Computer Science)',
                     'institution' => 'Example Institute of Technology',
+                    'education_period_start' => '2005-08-01',
+                    'education_period_end' => '2009-06-15',
                     'year' => '2009',
                     'cv_match' => 'Yes',
                     'bgv_match' => 'Yes',
@@ -363,6 +369,8 @@ PROMPT;
                 [
                     'qualification' => 'Higher Secondary (XII)',
                     'institution' => 'Example Senior Secondary School',
+                    'education_period_start' => '2003-04-01',
+                    'education_period_end' => '2005-03-31',
                     'year' => '2005',
                     'cv_match' => 'Yes',
                     'bgv_match' => 'Yes',

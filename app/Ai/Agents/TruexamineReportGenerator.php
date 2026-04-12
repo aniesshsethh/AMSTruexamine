@@ -76,19 +76,31 @@ Annexure table data (for the annexure page):
   - match_status (examples: "Match", "Partial Match", "Mismatch", "Undeclared Employment")
   - remarks
 - Use factual values from the PDFs only.
-- Keep annexure row remarks short: maximum 12 words, one concise sentence, no filler.
+- Annexure (employment) remarks style — write exactly one short sentence ending with a full stop. Use neutral, client-facing wording like an executive summary line (not bullet lists, not multiple sentences). Match this tone and pattern; adapt the facts to the row:
+  - "Shown only in UAN record."
+  - "CV joining date differs by one day."
+  - "Dates align across records."
+  - "Start date differs in UAN."
+  - "Declared consistently across CV, BGV, and UAN."
+  - "Not available in UAN; likely pre-UAN period."
 
 Education table data (for the annexure page):
 - Provide education_qualifications with one row per qualification found in CV / BGV.
+- NON-NEGOTIABLE: For every education row where year is a four-digit calendar year (e.g. "2012"), education_period_start and education_period_end MUST be non-empty YYYY-MM-DD strings. Do not output "" for both while year is numeric — that combination is invalid. If documents only give the passing year, you MUST still output dates: education_period_start = that-YYYY-01-01 and education_period_end = that-YYYY-12-31.
 - Each education row must include:
   - qualification
   - institution
-  - year
+  - education_period_start — YYYY-MM-DD from CV/BGV when exact dates exist; otherwise YYYY-01-01 for the stated passing/completion calendar year. Empty string ONLY when year is "Not Available" or no timing exists at all for that row.
+  - education_period_end — YYYY-MM-DD from CV/BGV when exact dates exist; otherwise YYYY-12-31 for that same calendar year. Empty string ONLY when year is "Not Available" or no timing exists at all for that row.
+  - year (completion or passing year as text, e.g. "2009"; use "Not Available" if unknown — must match the calendar year used in education_period_* when you applied the YYYY-01-01 / YYYY-12-31 rule)
   - cv_match (Yes/No/Partial)
   - bgv_match (Yes/No/Partial)
   - remarks
 - Include ALL identified qualifications (not just mismatches). If a field is unavailable, use "Not Available".
-- Keep education remarks short: maximum 10 words, concise and specific.
+- Education remarks style — same as employment: one short sentence, ends with a full stop, neutral executive-summary tone. Examples (adapt to the qualification):
+  - "Qualification aligns in both records."
+  - "Certification only found in CV."
+  - "Institution name differs between CV and BGV."
 
 Verifier block (footer of research section):
 - Set verifier_name and verifier_designation to "Research" when verification is document/desk-based (typical for this check type).
@@ -126,6 +138,12 @@ INSTRUCTIONS;
         $educationRow = $schema->object([
             'qualification' => $schema->string()->required(),
             'institution' => $schema->string()->required(),
+            'education_period_start' => $schema->string()
+                ->required()
+                ->description('ISO YYYY-MM-DD. If CV/BGV give only a passing year YYYY, use YYYY-01-01. Must not be empty when year is a 4-digit year. Empty only if year is Not Available or unknown.'),
+            'education_period_end' => $schema->string()
+                ->required()
+                ->description('ISO YYYY-MM-DD. If CV/BGV give only a passing year YYYY, use YYYY-12-31. Must not be empty when year is a 4-digit year. Empty only if year is Not Available or unknown.'),
             'year' => $schema->string()->required(),
             'cv_match' => $schema->string()->required(),
             'bgv_match' => $schema->string()->required(),

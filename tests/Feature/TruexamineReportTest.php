@@ -7,6 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 /**
  * @throws RuntimeException
@@ -138,6 +139,8 @@ function sampleStructuredTruexamineReport(): array
             [
                 'qualification' => 'B.Tech',
                 'institution' => 'Example University',
+                'education_period_start' => '2008-07-01',
+                'education_period_end' => '2012-05-30',
                 'year' => '2012',
                 'cv_match' => 'Yes',
                 'bgv_match' => 'Yes',
@@ -304,10 +307,18 @@ test('download returns an xlsx when report is in session', function () {
     $sheet1 = $spreadsheet->getSheetByName('Sheet1');
     expect($sheet1)->not->toBeNull();
     expect($sheet1->getCell([1, 1])->getValue())->toBe('Component');
-    expect($sheet1->getCell([2, 1])->getValue())->toBe('Parameter');
+    expect($sheet1->getCell([2, 1])->getValue())->toBe('Final Remarks');
     expect($sheet1->getCell([3, 1])->getValue())->toBe('Severity');
     expect($sheet1->getCell([4, 1])->getValue())->toBe('Description');
-    expect($spreadsheet->getSheetByName('Supporting data'))->not->toBeNull();
+    $descriptionSample = (string) $sheet1->getCell([4, 2])->getValue();
+    expect($descriptionSample)->toContain('Given:');
+    expect($descriptionSample)->toContain("\n");
+    $descriptionStyle = $sheet1->getStyle('D2');
+    expect($descriptionStyle->getAlignment()->getWrapText())->toBeTrue();
+    expect($descriptionStyle->getAlignment()->getVertical())->toBe(Alignment::VERTICAL_TOP);
+    $supporting = $spreadsheet->getSheetByName('Supporting data');
+    expect($supporting)->not->toBeNull();
+    expect($supporting->getCell([1, 1])->getValue())->toBe('Truexamine Check Report -Executive Summary');
 });
 
 test('legacy employment-education download returns a single-sheet xlsx with annexure and education rows', function () {
@@ -327,10 +338,29 @@ test('legacy employment-education download returns a single-sheet xlsx with anne
     expect($sheet)->not->toBeNull();
     expect($sheet->getCell([1, 1])->getValue())->toBe('Truexamine Check Report');
     expect($sheet->getCell([1, 2])->getValue())->toBe('Employer Name');
-    expect($sheet->getCell([2, 2])->getValue())->toBe('PF');
+    expect($sheet->getCell([2, 2])->getValue())->toBe('Employment period');
+    expect($sheet->getCell([3, 2])->getValue())->toBe('PFUAN /Form26AS');
     expect($sheet->getCell([1, 3])->getValue())->toBe('Example Employer Pvt Ltd');
+    expect($sheet->getCell([2, 3])->getValue())->toBe('01/01/2020 - 31/01/2022');
     expect(concatenateAllStringCellValues($spreadsheet))->toContain('Educational Qualifications');
     expect($sheet->getCell([1, 6])->getValue())->toBe('Qualification');
+    expect($sheet->getCell([3, 6])->getValue())->toBe('Year');
+    expect((string) $sheet->getCell([3, 7])->getValue())->toBe('2012');
+});
+
+test('supporting data export leaves Present as the employment end label', function () {
+    $user = User::factory()->create();
+    $report = sampleStructuredTruexamineReport();
+    $report['annexure_rows'][0]['employment_end_date'] = 'Present';
+
+    $response = $this->actingAs($user)
+        ->withSession(['truexamine_report' => $report])
+        ->get(route('truexamine-report.download-employment-education'));
+
+    $response->assertDownload('DXC-4001878-Truexamine-employment-education.xlsx');
+    $sheet = spreadsheetFromXlsxBinary($response->streamedContent())->getSheetByName('Truexamine');
+    expect($sheet)->not->toBeNull();
+    expect($sheet->getCell([2, 3])->getValue())->toBe('01/01/2020 - Present');
 });
 
 test('download produces well formed shared strings xml when report contains ampersands and angle brackets', function () {

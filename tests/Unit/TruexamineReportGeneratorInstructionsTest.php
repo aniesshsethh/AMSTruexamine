@@ -15,7 +15,13 @@ test('truexamine agent instructions require key finding themes and verifier defa
     $instructions = (string) TruexamineReportGenerator::make()->instructions();
 
     expect($instructions)
-        ->toContain('Undeclared or missing employment')
+        ->toContain('Missing employment in any source')
         ->toContain('verifier_name')
-        ->toContain('Not Available');
+        ->toContain('Not Available')
+        ->toContain('education_period_start')
+        ->toContain('YYYY-01-01')
+        ->toContain('Shown only in UAN record.')
+        ->toContain('Qualification aligns in both records.')
+        ->toContain('NON-NEGOTIABLE')
+        ->toContain('that combination is invalid');
 });

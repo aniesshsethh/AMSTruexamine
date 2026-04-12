@@ -5,6 +5,7 @@ namespace App\Services;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -73,14 +74,14 @@ class TruexamineReportXlsxExporter
     }
 
     /**
-     * Same column layout as the reference truexamine.xlsx rubric: Component | Parameter | Severity | Description.
+     * Same column layout as the reference truexamine.xlsx rubric: Component | Final Remarks | Severity | Description.
      *
      * @param  array<string, mixed>  $report
      */
     private function writeTrueExamineMatrixSheet(Worksheet $sheet, array $report): void
     {
         $row = 1;
-        $headers = ['Component', 'Parameter', 'Severity', 'Description'];
+        $headers = ['Component', 'Final Remarks', 'Severity', 'Description'];
         foreach (range(0, 3) as $i) {
             $sheet->setCellValue([$i + 1, $row], $headers[$i]);
         }
@@ -150,9 +151,39 @@ class TruexamineReportXlsxExporter
             $row++;
         }
 
-        foreach (range('A', 'D') as $col) {
+        $lastDataRow = $row - 1;
+        $this->applyMatrixSheetColumnLayout($sheet, $lastDataRow);
+    }
+
+    /**
+     * Autosize compact columns; fix Description width with wrap so long text stays readable.
+     */
+    private function applyMatrixSheetColumnLayout(Worksheet $sheet, int $lastDataRow): void
+    {
+        foreach (['A', 'B', 'C'] as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
+
+        $sheet->getColumnDimension('D')->setAutoSize(false);
+        $sheet->getColumnDimension('D')->setWidth(52);
+
+        if ($lastDataRow < 2) {
+            return;
+        }
+
+        $sheet->getStyle("A2:C{$lastDataRow}")->applyFromArray([
+            'alignment' => [
+                'vertical' => Alignment::VERTICAL_TOP,
+            ],
+        ]);
+
+        $sheet->getStyle("D2:D{$lastDataRow}")->applyFromArray([
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_LEFT,
+                'vertical' => Alignment::VERTICAL_TOP,
+                'wrapText' => true,
+            ],
+        ]);
     }
 
     /**
@@ -163,7 +194,7 @@ class TruexamineReportXlsxExporter
     private function writeSupportingDataSheet(
         Worksheet $sheet,
         array $report,
-        string $bannerTitle = 'Truexamine Check Report — supporting tables',
+        string $bannerTitle = 'Truexamine Check Report -Executive Summary',
     ): void {
         $row = 1;
         $sheet->setCellValue("A{$row}", $bannerTitle);
@@ -175,23 +206,27 @@ class TruexamineReportXlsxExporter
         /** @var array<int, array<string, mixed>> $vchecks */
         $vchecks = is_array($report['verification_checks'] ?? null) ? $report['verification_checks'] : [];
 
-        $annexureHeaders = ['Employer Name', 'PF', 'BGV', 'CV', 'Match Status', 'Remarks'];
+        $annexureHeaders = ['Employer Name', 'Employment period', 'PFUAN /Form26AS', 'BGV Profile', 'CV', 'Match Status', 'Remarks'];
         $headerRow = $row;
-        foreach (range(0, 5) as $i) {
+        foreach (range(0, 6) as $i) {
             $sheet->setCellValue([$i + 1, $row], $annexureHeaders[$i]);
         }
-        $this->applyHeaderStyle($sheet, $headerRow, 1, 6);
+        $this->applyHeaderStyle($sheet, $headerRow, 1, 7);
         $row++;
 
         if ($annexureRows !== []) {
             foreach ($annexureRows as $ar) {
                 $ar = is_array($ar) ? $ar : [];
                 $sheet->setCellValue([1, $row], (string) ($ar['employer_name'] ?? ''));
-                $sheet->setCellValue([2, $row], (string) ($ar['pf_match'] ?? ''));
-                $sheet->setCellValue([3, $row], (string) ($ar['bgv_match'] ?? ''));
-                $sheet->setCellValue([4, $row], (string) ($ar['cv_match'] ?? ''));
-                $sheet->setCellValue([5, $row], (string) ($ar['match_status'] ?? ''));
-                $sheet->setCellValue([6, $row], (string) ($ar['remarks'] ?? ''));
+                $sheet->setCellValue([2, $row], $this->formatOptionalDateRange(
+                    (string) ($ar['employment_start_date'] ?? ''),
+                    (string) ($ar['employment_end_date'] ?? ''),
+                ));
+                $sheet->setCellValue([3, $row], (string) ($ar['pf_match'] ?? ''));
+                $sheet->setCellValue([4, $row], (string) ($ar['bgv_match'] ?? ''));
+                $sheet->setCellValue([5, $row], (string) ($ar['cv_match'] ?? ''));
+                $sheet->setCellValue([6, $row], (string) ($ar['match_status'] ?? ''));
+                $sheet->setCellValue([7, $row], (string) ($ar['remarks'] ?? ''));
                 $row++;
             }
         } else {
@@ -202,8 +237,9 @@ class TruexamineReportXlsxExporter
                 $sheet->setCellValue([2, $row], '-');
                 $sheet->setCellValue([3, $row], '-');
                 $sheet->setCellValue([4, $row], '-');
-                $sheet->setCellValue([5, $row], $pass);
-                $sheet->setCellValue([6, $row], (string) ($report['research_remarks'] ?? '-'));
+                $sheet->setCellValue([5, $row], '-');
+                $sheet->setCellValue([6, $row], $pass);
+                $sheet->setCellValue([7, $row], (string) ($report['research_remarks'] ?? '-'));
                 $row++;
             }
         }
@@ -216,7 +252,7 @@ class TruexamineReportXlsxExporter
         /** @var array<int, array<string, mixed>> $edu */
         $edu = is_array($report['education_qualifications'] ?? null) ? $report['education_qualifications'] : [];
 
-        $eduHeaders = ['Qualification', 'Institution', 'Year', 'CV', 'BGV', 'Remarks'];
+        $eduHeaders = ['Qualification', 'Institution', 'Year', 'CV', 'BGV Profile', 'Remarks'];
         $eduHeaderRow = $row;
         foreach (range(0, 5) as $i) {
             $sheet->setCellValue([$i + 1, $row], $eduHeaders[$i]);
@@ -241,8 +277,45 @@ class TruexamineReportXlsxExporter
             $row++;
         }
 
-        foreach (range('A', 'F') as $col) {
+        foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+    }
+
+    private function formatOptionalDateRange(string $start, string $end): string
+    {
+        $startFormatted = $this->formatSingleDateOrKeywordForExport(trim($start));
+        $endFormatted = $this->formatSingleDateOrKeywordForExport(trim($end));
+
+        if ($startFormatted === '' && $endFormatted === '') {
+            return '';
+        }
+        if ($startFormatted === '') {
+            return $endFormatted;
+        }
+        if ($endFormatted === '') {
+            return $startFormatted;
+        }
+
+        return $startFormatted.' - '.$endFormatted;
+    }
+
+    /**
+     * Normalizes ISO-style dates to d/m/Y. Preserves "Present" and non-date text when parsing fails.
+     */
+    private function formatSingleDateOrKeywordForExport(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+        if (strcasecmp($value, 'Present') === 0) {
+            return 'Present';
+        }
+
+        try {
+            return Carbon::parse($value)->format('d/m/Y');
+        } catch (\Throwable) {
+            return $value;
         }
     }
 
@@ -266,7 +339,7 @@ class TruexamineReportXlsxExporter
             $parts[] = 'Result: '.$result;
         }
 
-        return $parts !== [] ? implode(' | ', $parts) : '—';
+        return $parts !== [] ? implode("\n", $parts) : '—';
     }
 
     private function severityFromCheckResult(string $checkResult, string $reportColor): string
