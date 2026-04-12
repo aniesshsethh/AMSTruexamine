@@ -206,7 +206,7 @@ class TruexamineReportXlsxExporter
         /** @var array<int, array<string, mixed>> $vchecks */
         $vchecks = is_array($report['verification_checks'] ?? null) ? $report['verification_checks'] : [];
 
-        $annexureHeaders = ['Employer Name', 'Employment period', 'PFUAN /Form26AS', 'BGV Profile', 'CV', 'Match Status', 'Remarks'];
+        $annexureHeaders = ['Employer Name', 'Employment period', 'UAN-PF', 'BGV Profile', 'CV/Resume', 'Match Status', 'Remarks'];
         $headerRow = $row;
         foreach (range(0, 6) as $i) {
             $sheet->setCellValue([$i + 1, $row], $annexureHeaders[$i]);
@@ -252,7 +252,7 @@ class TruexamineReportXlsxExporter
         /** @var array<int, array<string, mixed>> $edu */
         $edu = is_array($report['education_qualifications'] ?? null) ? $report['education_qualifications'] : [];
 
-        $eduHeaders = ['Qualification', 'Institution', 'Year', 'CV', 'BGV Profile', 'Remarks'];
+        $eduHeaders = ['Qualification', 'Institution', 'Year', 'CV/Resume', 'BGV Profile', 'Remarks'];
         $eduHeaderRow = $row;
         foreach (range(0, 5) as $i) {
             $sheet->setCellValue([$i + 1, $row], $eduHeaders[$i]);

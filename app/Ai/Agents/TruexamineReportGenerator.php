@@ -47,6 +47,7 @@ Date comparison rules (critical — follow exactly):
 - Do not invent discrepancies to mirror example reports; every finding must be grounded in the three documents.
 
 - Note when historical employment predates UAN (launched ~October 2014 in India) and therefore may not appear in UAN.
+- PF / UAN passbook rows sometimes show a joining date but no date of exit / date of leaving (blank, dash, or omitted). If you can only verify alignment on the start/join date from PF/UAN against CV/BGV and the PF record does not state an exit date for that spell, set annexure pf_match to Partial (never Yes). State briefly in remarks that the join date aligns but PF shows no exit date.
 - For "Form 26AS" style rows, use "Not Available" if tax data is not in the PDFs.
 - Assign report_color: GREEN (clear), YELLOW (minor issues only), or RED (major discrepancy such as undeclared employment or material fraud risk).
 - Use the client_ref and ams_ref values supplied in the user message when populating those fields.
@@ -70,7 +71,7 @@ Annexure table data (for the annexure page):
   - employer_name
   - employment_start_date (YYYY-MM-DD when known, else empty string)
   - employment_end_date (YYYY-MM-DD when known; use "Present" for ongoing)
-  - pf_match (Yes/No/Partial)
+  - pf_match (Yes/No/Partial) — Yes only when PF/UAN supports both join and exit (or ongoing "Present") alignment with the spell; use Partial when join/start matches but PF lacks an exit date as above
   - bgv_match (Yes/No/Partial)
   - cv_match (Yes/No/Partial)
   - match_status (examples: "Match", "Partial Match", "Mismatch", "Undeclared Employment")
@@ -128,7 +129,9 @@ INSTRUCTIONS;
             'employer_name' => $schema->string()->required(),
             'employment_start_date' => $schema->string()->required(),
             'employment_end_date' => $schema->string()->required(),
-            'pf_match' => $schema->string()->required(),
+            'pf_match' => $schema->string()
+                ->required()
+                ->description('Yes/No/Partial. Partial when PF/UAN shows join/start aligned with CV/BGV but has no exit/date-of-leaving for that spell.'),
             'bgv_match' => $schema->string()->required(),
             'cv_match' => $schema->string()->required(),
             'match_status' => $schema->string()->required(),

@@ -319,6 +319,8 @@ test('download returns an xlsx when report is in session', function () {
     $supporting = $spreadsheet->getSheetByName('Supporting data');
     expect($supporting)->not->toBeNull();
     expect($supporting->getCell([1, 1])->getValue())->toBe('Truexamine Check Report -Executive Summary');
+    expect($supporting->getCell([5, 2])->getValue())->toBe('CV/Resume');
+    expect($supporting->getCell([4, 6])->getValue())->toBe('CV/Resume');
 });
 
 test('legacy employment-education download returns a single-sheet xlsx with annexure and education rows', function () {
@@ -339,11 +341,13 @@ test('legacy employment-education download returns a single-sheet xlsx with anne
     expect($sheet->getCell([1, 1])->getValue())->toBe('Truexamine Check Report');
     expect($sheet->getCell([1, 2])->getValue())->toBe('Employer Name');
     expect($sheet->getCell([2, 2])->getValue())->toBe('Employment period');
-    expect($sheet->getCell([3, 2])->getValue())->toBe('PFUAN /Form26AS');
+    expect($sheet->getCell([3, 2])->getValue())->toBe('UAN-PF');
+    expect($sheet->getCell([5, 2])->getValue())->toBe('CV/Resume');
     expect($sheet->getCell([1, 3])->getValue())->toBe('Example Employer Pvt Ltd');
     expect($sheet->getCell([2, 3])->getValue())->toBe('01/01/2020 - 31/01/2022');
     expect(concatenateAllStringCellValues($spreadsheet))->toContain('Educational Qualifications');
     expect($sheet->getCell([1, 6])->getValue())->toBe('Qualification');
+    expect($sheet->getCell([4, 6])->getValue())->toBe('CV/Resume');
     expect($sheet->getCell([3, 6])->getValue())->toBe('Year');
     expect((string) $sheet->getCell([3, 7])->getValue())->toBe('2012');
 });

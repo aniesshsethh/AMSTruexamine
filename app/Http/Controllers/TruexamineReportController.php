@@ -117,6 +117,7 @@ Bidirectional reconciliation rule (strict):
 
 Include verifier_name, verifier_designation, verifier_email, and verifier_phone (use "Research" / "Not Available" when appropriate per your instructions). Number key_findings as "1. ...", "2. ...", covering undeclared UAN employment vs CV/BGV, real date mismatches, UAN employer transitions, and UAN gaps explained (e.g. pre-Oct 2014 tenure).
 Include annexure_rows with one row per company/employment spell and fields: employer_name, employment_start_date, employment_end_date, pf_match, bgv_match, cv_match, match_status, remarks.
+If UAN/PF shows a joining date but no exit date for a spell and only the start date matches CV/BGV, set pf_match to Partial (not Yes) and note in remarks.
 Include education_qualifications with one row per qualification and fields: qualification, institution, education_period_start, education_period_end, year, cv_match, bgv_match, remarks.
 EDUCATION DATE FIELDS (mandatory — Excel export reads these keys):
 For EVERY object in education_qualifications[], set education_period_start and education_period_end to full ISO dates (YYYY-MM-DD). Never leave both as "" if year is a four-digit value like "2012".
